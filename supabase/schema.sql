@@ -29,6 +29,8 @@ create table if not exists public.it_requests (
   status text not null default 'waiting' check (
     status in ('waiting', 'in_progress', 'done')
   ),
+  archived_at timestamptz,
+  archived_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -47,6 +49,27 @@ alter table public.it_requests
 alter table public.it_requests
   add column if not exists image_path text;
 
+alter table public.it_requests
+  add column if not exists archived_at timestamptz;
+
+alter table public.it_requests
+  add column if not exists archived_by uuid;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'it_requests_archived_by_fkey'
+      and conrelid = 'public.it_requests'::regclass
+  ) then
+    alter table public.it_requests
+      add constraint it_requests_archived_by_fkey
+      foreign key (archived_by) references auth.users(id) on delete set null;
+  end if;
+end
+$$;
+
 create index if not exists it_requests_department_idx
   on public.it_requests (department);
 
@@ -55,6 +78,10 @@ create index if not exists it_requests_status_idx
 
 create index if not exists it_requests_created_at_idx
   on public.it_requests (created_at desc);
+
+create index if not exists it_requests_archived_at_idx
+  on public.it_requests (archived_at desc)
+  where archived_at is not null;
 
 create table if not exists public.it_request_messages (
   id uuid primary key default gen_random_uuid(),
@@ -150,11 +177,22 @@ create policy "Authenticated users can update request status"
 on public.it_requests for update
 to authenticated
 using (true)
-with check (status in ('waiting', 'in_progress', 'done'));
+with check (
+  status in ('waiting', 'in_progress', 'done')
+  and (
+    (archived_at is null and archived_by is null)
+    or (
+      archived_at is not null
+      and status = 'done'
+      and archived_by = auth.uid()
+    )
+  )
+);
 
 revoke all on table public.it_requests from anon, authenticated;
 grant select, insert on table public.it_requests to authenticated;
-grant update (status) on table public.it_requests to authenticated;
+grant update (status, archived_at, archived_by)
+  on table public.it_requests to authenticated;
 
 alter table public.it_request_messages enable row level security;
 

@@ -1,13 +1,17 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import ArchivePage from "./components/ArchivePage";
 import AttachmentImage from "./components/AttachmentImage";
 import ChatDrawer from "./components/ChatDrawer";
 import LoginPage from "./components/LoginPage";
+import StatisticsPage from "./components/StatisticsPage";
 import { supabase } from "./lib/supabase";
 import { validateImage } from "./services/imageService";
 import {
+  archiveTicket,
   createTicket,
   getTickets,
+  restoreTicket,
   updateTicketStatus,
 } from "./services/ticketService";
 import type {
@@ -16,6 +20,8 @@ import type {
   TicketPriority,
   TicketStatus,
 } from "./types/ticket";
+
+type AppView = "dashboard" | "statistics" | "archive";
 
 const departments = [
   "ทุกแผนก",
@@ -86,6 +92,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [activeView, setActiveView] = useState<AppView>("dashboard");
   const [activeDepartment, setActiveDepartment] = useState("ทุกแผนก");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [query, setQuery] = useState("");
@@ -97,6 +104,8 @@ function App() {
   const [submittedCode, setSubmittedCode] = useState("");
   const [requestImagePreview, setRequestImagePreview] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
   const [activeChatTicket, setActiveChatTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
@@ -153,10 +162,20 @@ function App() {
     };
   }, [session]);
 
+  const activeTickets = useMemo(
+    () => tickets.filter((ticket) => !ticket.archivedAt),
+    [tickets],
+  );
+
+  const archivedTickets = useMemo(
+    () => tickets.filter((ticket) => Boolean(ticket.archivedAt)),
+    [tickets],
+  );
+
   const filteredTickets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return tickets.filter((ticket) => {
+    return activeTickets.filter((ticket) => {
       const matchesDepartment =
         activeDepartment === "ทุกแผนก" ||
         ticket.department === activeDepartment;
@@ -176,19 +195,30 @@ function App() {
 
       return matchesDepartment && matchesStatus && matchesQuery;
     });
-  }, [activeDepartment, query, statusFilter, tickets]);
+  }, [activeDepartment, activeTickets, query, statusFilter]);
 
   const counts = useMemo(
     () => ({
-      all: tickets.length,
-      waiting: tickets.filter((ticket) => ticket.status === "waiting").length,
-      inProgress: tickets.filter(
+      all: activeTickets.length,
+      waiting: activeTickets.filter((ticket) => ticket.status === "waiting").length,
+      inProgress: activeTickets.filter(
         (ticket) => ticket.status === "in_progress",
       ).length,
-      done: tickets.filter((ticket) => ticket.status === "done").length,
+      done: activeTickets.filter((ticket) => ticket.status === "done").length,
     }),
-    [tickets],
+    [activeTickets],
   );
+
+  function showView(view: AppView, targetId?: string) {
+    setActiveView(view);
+    window.setTimeout(() => {
+      if (targetId) {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 0);
+  }
 
   function openRequestForm() {
     setSubmittedCode("");
@@ -290,6 +320,45 @@ function App() {
     }
   }
 
+  async function handleArchive(id: string) {
+    const ticket = tickets.find((item) => item.id === id);
+    if (!ticket || ticket.status !== "done") return;
+
+    const confirmed = window.confirm(
+      `ลบ ${ticket.code} ออกจากรายการหลักและเก็บไว้ในคลังสำรองหรือไม่?`,
+    );
+    if (!confirmed) return;
+
+    setPageError("");
+    setArchivingId(id);
+    try {
+      const updated = await archiveTicket(id, session?.user.id ?? "");
+      setTickets((current) =>
+        current.map((item) => (item.id === id ? updated : item)),
+      );
+      setActiveChatTicket(null);
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setArchivingId(null);
+    }
+  }
+
+  async function handleRestore(id: string) {
+    setPageError("");
+    setRestoringId(id);
+    try {
+      const updated = await restoreTicket(id);
+      setTickets((current) =>
+        current.map((item) => (item.id === id ? updated : item)),
+      );
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
   async function handleSignOut() {
     setPageError("");
     setActiveChatTicket(null);
@@ -314,7 +383,15 @@ function App() {
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#top" aria-label="IT Desk หน้าหลัก">
+        <a
+          className="brand"
+          href="#top"
+          aria-label="IT Desk หน้าหลัก"
+          onClick={(event) => {
+            event.preventDefault();
+            showView("dashboard", "top");
+          }}
+        >
           <span className="brand-mark">IT</span>
           <span>
             <strong>IT Desk</strong>
@@ -323,15 +400,27 @@ function App() {
         </a>
 
         <nav className="side-nav" aria-label="เมนูหลัก">
-          <a className="active" href="#top">
+          <button
+            className={activeView === "dashboard" ? "active" : ""}
+            onClick={() => showView("dashboard", "top")}
+          >
             <span>⌂</span> ภาพรวม
-          </a>
-          <a href="#requests">
+          </button>
+          <button onClick={() => showView("dashboard", "requests")}>
             <span>≡</span> คำขอทั้งหมด <b>{counts.all}</b>
-          </a>
-          <a href="#departments">
-            <span>▦</span> แผนก
-          </a>
+          </button>
+          <button
+            className={activeView === "statistics" ? "active" : ""}
+            onClick={() => showView("statistics")}
+          >
+            <span>⌁</span> สถิติ
+          </button>
+          <button
+            className={activeView === "archive" ? "active" : ""}
+            onClick={() => showView("archive")}
+          >
+            <span>▣</span> คลังสำรอง <b>{archivedTickets.length}</b>
+          </button>
         </nav>
 
         <div className="sidebar-help">
@@ -360,6 +449,28 @@ function App() {
         </div>
       </aside>
 
+      <nav className="mobile-view-nav" aria-label="เปลี่ยนหน้า">
+        <button
+          className={activeView === "dashboard" ? "active" : ""}
+          onClick={() => showView("dashboard", "top")}
+        >
+          ภาพรวม
+        </button>
+        <button
+          className={activeView === "statistics" ? "active" : ""}
+          onClick={() => showView("statistics")}
+        >
+          สถิติ
+        </button>
+        <button
+          className={activeView === "archive" ? "active" : ""}
+          onClick={() => showView("archive")}
+        >
+          สำรอง ({archivedTickets.length})
+        </button>
+      </nav>
+
+      {activeView === "dashboard" && (
       <section className="content" id="top">
         <header className="topbar">
           <div className="mobile-brand">IT</div>
@@ -575,6 +686,17 @@ function App() {
                     >
                       <span>•••</span> เปิดแชต
                     </button>
+                    {ticket.status === "done" && (
+                      <button
+                        className="archive-ticket-button"
+                        disabled={archivingId === ticket.id}
+                        onClick={() => void handleArchive(ticket.id)}
+                      >
+                        {archivingId === ticket.id
+                          ? "กำลังเก็บ…"
+                          : "⌫ ลบและเก็บสำรอง"}
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -599,7 +721,7 @@ function App() {
 
             <div className="department-list">
               {departments.slice(1).map((department, index) => {
-                const total = tickets.filter(
+                const total = activeTickets.filter(
                   (ticket) => ticket.department === department,
                 ).length;
                 const palette = ["blue", "violet", "orange", "green"][index];
@@ -643,6 +765,26 @@ function App() {
           </aside>
         </section>
       </section>
+      )}
+
+      {activeView === "statistics" && (
+        <StatisticsPage
+          tickets={tickets}
+          isLoading={isLoading}
+          errorMessage={pageError}
+        />
+      )}
+
+      {activeView === "archive" && (
+        <ArchivePage
+          tickets={archivedTickets}
+          isLoading={isLoading}
+          errorMessage={pageError}
+          restoringId={restoringId}
+          onRestore={(id) => void handleRestore(id)}
+          onOpenChat={setActiveChatTicket}
+        />
+      )}
 
       {isFormOpen && (
         <div

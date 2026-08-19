@@ -13,6 +13,8 @@ export interface Ticket {
   detail: string;
   imagePath: string | null;
   status: TicketStatus;
+  archivedAt: string | null;
+  archivedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
