@@ -4,5 +4,6 @@ export interface ChatMessage {
   senderId: string;
   senderEmail: string;
   body: string;
+  imagePath: string | null;
   createdAt: string;
 }

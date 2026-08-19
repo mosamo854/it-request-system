@@ -7,6 +7,7 @@
 - Login ด้วย Supabase Auth (Email/Password)
 - ไม่มีหน้า Register — ผู้ดูแลสร้างบัญชีจากหลังบ้านเท่านั้น
 - ห้องแชตแยกตามคำขอ พร้อมรับข้อความใหม่แบบ Realtime
+- แนบรูปภาพได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 5 MB ต่อรูป)
 - ส่งคำขอใหม่ไปยังฝ่าย IT
 - แสดงคำขอทั้งหมดและสรุปจำนวนตามสถานะ
 - ค้นหาด้วยเลขคำขอ หัวข้อ ชื่อผู้แจ้ง หรือแผนก
@@ -22,9 +23,11 @@
 3. คัดลอกโค้ดทั้งหมดจาก `supabase/schema.sql`
 4. กด **Run**
 
-ไฟล์ SQL จะสร้างตาราง `it_requests`, ตารางแชต `it_request_messages`, indexes, trigger, Realtime, RLS policies และข้อมูลตัวอย่าง โดยอนุญาตให้เฉพาะผู้ที่ Login แล้วเข้าถึงข้อมูล
+ไฟล์ SQL จะสร้างตาราง `it_requests`, ตารางแชต `it_request_messages`, Storage bucket ส่วนตัว `it-request-images`, indexes, trigger, Realtime, RLS policies และข้อมูลตัวอย่าง โดยอนุญาตให้เฉพาะผู้ที่ Login แล้วเข้าถึงข้อมูลและรูปภาพ
 
-หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้งเพื่อเพิ่มตารางแชตและเปิด Realtime สคริปต์ออกแบบให้ Run ซ้ำได้
+หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้งเพื่อเพิ่มคอลัมน์รูปภาพ สร้าง Storage bucket และอัปเดต RLS สคริปต์ออกแบบให้ Run ซ้ำได้โดยไม่ลบคำขอหรือข้อความเดิม
+
+รูปภาพรองรับไฟล์ JPG, PNG, WEBP และ GIF ขนาดไม่เกิน 5 MB ไฟล์จะอยู่ใน bucket แบบ private และหน้าเว็บจะสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่ Login แล้ว
 
 ### ถ้าเคยพบ error `it_requests_requester_email_check`
 
@@ -87,9 +90,11 @@ npm run preview
 
 ```text
 src/
+├─ components/AttachmentImage.tsx # โหลดรูปส่วนตัวด้วย signed URL
 ├─ components/ChatDrawer.tsx # ห้องแชตของแต่ละคำขอ
 ├─ components/LoginPage.tsx  # หน้า Login ไม่มี Register
 ├─ lib/supabase.ts           # Supabase client และ Auth client
+├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
 ├─ services/ticketService.ts # คำสั่ง select/insert/update
 ├─ types/message.ts          # TypeScript type ของข้อความ
@@ -103,4 +108,4 @@ supabase/
 
 ## หมายเหตุด้านสิทธิ์
 
-RLS อนุญาตเฉพาะบัญชีที่ Login แล้วให้อ่าน/สร้างคำขอ แก้เฉพาะคอลัมน์ `status` และส่งข้อความโดยใช้ตัวตนของบัญชีที่ Login หากต้องการแยกสิทธิ์พนักงานทั่วไปกับฝ่าย IT ขั้นถัดไปควรเพิ่มตาราง `profiles` และ role เช่น `employee`, `it_staff`, `admin`
+RLS อนุญาตเฉพาะบัญชีที่ Login แล้วให้อ่าน/สร้างคำขอ แก้เฉพาะคอลัมน์ `status` ส่งข้อความโดยใช้ตัวตนของบัญชีที่ Login และอัปโหลดรูปไว้ในโฟลเดอร์ของบัญชีนั้น หากต้องการแยกสิทธิ์พนักงานทั่วไปกับฝ่าย IT ขั้นถัดไปควรเพิ่มตาราง `profiles` และ role เช่น `employee`, `it_staff`, `admin`

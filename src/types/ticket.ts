@@ -11,6 +11,7 @@ export interface Ticket {
   priority: TicketPriority;
   subject: string;
   detail: string;
+  imagePath: string | null;
   status: TicketStatus;
   createdAt: string;
   updatedAt: string;

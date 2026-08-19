@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import type { ChatMessage } from "../types/message";
+import { removeImage, uploadImage } from "./imageService";
 
 interface MessageRow {
   id: string;
@@ -7,6 +8,7 @@ interface MessageRow {
   sender_id: string;
   sender_email: string;
   body: string;
+  image_path: string | null;
   created_at: string;
 }
 
@@ -17,6 +19,7 @@ function mapMessage(row: MessageRow): ChatMessage {
     senderId: row.sender_id,
     senderEmail: row.sender_email,
     body: row.body,
+    imagePath: row.image_path ?? null,
     createdAt: row.created_at,
   };
 }
@@ -37,7 +40,11 @@ export async function sendMessage(input: {
   senderId: string;
   senderEmail: string;
   body: string;
+  image?: File;
 }): Promise<ChatMessage> {
+  const imagePath = input.image
+    ? await uploadImage(input.image, "messages")
+    : null;
   const { data, error } = await supabase
     .from("it_request_messages")
     .insert({
@@ -45,11 +52,15 @@ export async function sendMessage(input: {
       sender_id: input.senderId,
       sender_email: input.senderEmail,
       body: input.body.trim(),
+      image_path: imagePath,
     })
     .select("*")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    if (imagePath) await removeImage(imagePath).catch(() => undefined);
+    throw error;
+  }
   return mapMessage(data as MessageRow);
 }
 

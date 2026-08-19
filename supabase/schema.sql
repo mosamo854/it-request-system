@@ -25,6 +25,7 @@ create table if not exists public.it_requests (
   ),
   subject text not null check (char_length(subject) between 3 and 120),
   detail text not null check (char_length(detail) between 3 and 3000),
+  image_path text,
   status text not null default 'waiting' check (
     status in ('waiting', 'in_progress', 'done')
   ),
@@ -43,6 +44,9 @@ alter table public.it_requests
     requester_email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+[.][A-Z]{2,}$'
   );
 
+alter table public.it_requests
+  add column if not exists image_path text;
+
 create index if not exists it_requests_department_idx
   on public.it_requests (department);
 
@@ -57,12 +61,51 @@ create table if not exists public.it_request_messages (
   request_id uuid not null references public.it_requests(id) on delete cascade,
   sender_id uuid not null references auth.users(id) on delete cascade,
   sender_email text not null,
-  body text not null check (char_length(body) between 1 and 2000),
+  body text not null default '',
+  image_path text,
   created_at timestamptz not null default now()
 );
 
+-- Upgrade message tables created by an older version so image-only messages
+-- are valid while keeping text messages limited to 2,000 characters.
+alter table public.it_request_messages
+  add column if not exists image_path text;
+
+alter table public.it_request_messages
+  alter column body set default '';
+
+alter table public.it_request_messages
+  drop constraint if exists it_request_messages_body_check;
+
+alter table public.it_request_messages
+  drop constraint if exists it_request_messages_body_or_image_check;
+
+alter table public.it_request_messages
+  add constraint it_request_messages_body_or_image_check
+  check (
+    char_length(trim(body)) between 1 and 2000
+    or image_path is not null
+  );
+
 create index if not exists it_request_messages_request_id_idx
   on public.it_request_messages (request_id, created_at);
+
+-- Private image bucket. The browser receives a short-lived signed URL only
+-- after Supabase confirms that the requester is authenticated.
+insert into storage.buckets (
+  id, name, public, file_size_limit, allowed_mime_types
+)
+values (
+  'it-request-images',
+  'it-request-images',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -93,7 +136,13 @@ drop policy if exists "Authenticated users can create a waiting request" on publ
 create policy "Authenticated users can create a waiting request"
 on public.it_requests for insert
 to authenticated
-with check (status = 'waiting');
+with check (
+  status = 'waiting'
+  and (
+    image_path is null
+    or split_part(image_path, '/', 1) = auth.uid()::text
+  )
+);
 
 drop policy if exists "Anyone can update request status" on public.it_requests;
 drop policy if exists "Authenticated users can update request status" on public.it_requests;
@@ -124,10 +173,42 @@ to authenticated
 with check (
   auth.uid() = sender_id
   and sender_email = coalesce(auth.jwt() ->> 'email', '')
+  and (char_length(trim(body)) > 0 or image_path is not null)
+  and (
+    image_path is null
+    or split_part(image_path, '/', 1) = auth.uid()::text
+  )
 );
 
 revoke all on table public.it_request_messages from anon, authenticated;
 grant select, insert on table public.it_request_messages to authenticated;
+
+drop policy if exists "Authenticated users can view IT request images"
+  on storage.objects;
+create policy "Authenticated users can view IT request images"
+on storage.objects for select
+to authenticated
+using (bucket_id = 'it-request-images');
+
+drop policy if exists "Authenticated users can upload IT request images"
+  on storage.objects;
+create policy "Authenticated users can upload IT request images"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'it-request-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "Users can delete their own IT request images"
+  on storage.objects;
+create policy "Users can delete their own IT request images"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'it-request-images'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
 
 -- Add the messages table to Supabase Realtime once. The DO block keeps this
 -- script safe to rerun without a "table is already member" error.

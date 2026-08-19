@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { validateImage } from "../services/imageService";
 import {
   getMessages,
   sendMessage,
@@ -6,6 +7,7 @@ import {
 } from "../services/messageService";
 import type { ChatMessage } from "../types/message";
 import type { Ticket } from "../types/ticket";
+import AttachmentImage from "./AttachmentImage";
 
 interface ChatDrawerProps {
   ticket: Ticket;
@@ -44,7 +46,9 @@ export default function ChatDrawer({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [imagePreview, setImagePreview] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -81,12 +85,50 @@ export default function ChatDrawer({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(
+    () => () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    },
+    [imagePreview],
+  );
+
+  function clearSelectedImage() {
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    setImagePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return "";
+    });
+  }
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    setErrorMessage("");
+
+    setImagePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return "";
+    });
+
+    if (!file) return;
+
+    try {
+      validateImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    } catch (error) {
+      event.currentTarget.value = "";
+      setErrorMessage(getErrorMessage(error));
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const body = String(form.get("message") ?? "").trim();
-    if (!body) return;
+    const imageEntry = form.get("image");
+    const image =
+      imageEntry instanceof File && imageEntry.size > 0 ? imageEntry : undefined;
+    if (!body && !image) return;
 
     setErrorMessage("");
     setIsSending(true);
@@ -97,6 +139,7 @@ export default function ChatDrawer({
         senderId: currentUserId,
         senderEmail: currentUserEmail,
         body,
+        image,
       });
       setMessages((current) =>
         current.some((item) => item.id === message.id)
@@ -104,6 +147,7 @@ export default function ChatDrawer({
           : [...current, message],
       );
       formElement.reset();
+      clearSelectedImage();
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -168,7 +212,14 @@ export default function ChatDrawer({
                   <small>
                     {isOwnMessage ? "คุณ" : message.senderEmail.split("@")[0]}
                   </small>
-                  <p>{message.body}</p>
+                  {message.imagePath && (
+                    <AttachmentImage
+                      path={message.imagePath}
+                      alt="รูปภาพในข้อความแชต"
+                      className="message-image"
+                    />
+                  )}
+                  {message.body && <p>{message.body}</p>}
                   <time>{formatMessageTime(message.createdAt)}</time>
                 </div>
               </article>
@@ -180,24 +231,43 @@ export default function ChatDrawer({
         <footer className="chat-compose">
           {errorMessage && <p className="chat-error">{errorMessage}</p>}
           <form onSubmit={handleSubmit}>
-            <textarea
-              name="message"
-              rows={2}
-              maxLength={2000}
-              required
-              placeholder="พิมพ์ข้อความ…"
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-            />
-            <button type="submit" disabled={isSending}>
-              {isSending ? "…" : "ส่ง"} <span>→</span>
-            </button>
+            {imagePreview && (
+              <div className="chat-image-preview">
+                <img src={imagePreview} alt="ตัวอย่างรูปที่จะส่งในแชต" />
+                <button type="button" onClick={clearSelectedImage} aria-label="ลบรูป">
+                  ×
+                </button>
+              </div>
+            )}
+            <div className="chat-compose-row">
+              <label className="chat-attach-button" title="แนบรูปภาพ">
+                <span>＋</span>
+                <input
+                  ref={imageInputRef}
+                  name="image"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={handleImageChange}
+                />
+              </label>
+              <textarea
+                name="message"
+                rows={2}
+                maxLength={2000}
+                placeholder="พิมพ์ข้อความหรือแนบรูป…"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.currentTarget.form?.requestSubmit();
+                  }
+                }}
+              />
+              <button type="submit" disabled={isSending}>
+                {isSending ? "…" : "ส่ง"} <span>→</span>
+              </button>
+            </div>
           </form>
-          <small>กด Enter เพื่อส่ง · Shift + Enter เพื่อขึ้นบรรทัดใหม่</small>
+          <small>แนบรูปได้ไม่เกิน 5 MB · Enter เพื่อส่ง · Shift + Enter เพื่อขึ้นบรรทัดใหม่</small>
         </footer>
       </aside>
     </div>

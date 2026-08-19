@@ -1,8 +1,10 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import AttachmentImage from "./components/AttachmentImage";
 import ChatDrawer from "./components/ChatDrawer";
 import LoginPage from "./components/LoginPage";
 import { supabase } from "./lib/supabase";
+import { validateImage } from "./services/imageService";
 import {
   createTicket,
   getTickets,
@@ -93,6 +95,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [submittedCode, setSubmittedCode] = useState("");
+  const [requestImagePreview, setRequestImagePreview] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [activeChatTicket, setActiveChatTicket] = useState<Ticket | null>(null);
 
@@ -193,6 +196,34 @@ function App() {
     setIsFormOpen(true);
   }
 
+  function closeRequestForm() {
+    setIsFormOpen(false);
+    setRequestImagePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return "";
+    });
+  }
+
+  function handleRequestImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    setFormError("");
+
+    setRequestImagePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return "";
+    });
+
+    if (!file) return;
+
+    try {
+      validateImage(file);
+      setRequestImagePreview(URL.createObjectURL(file));
+    } catch (error) {
+      event.currentTarget.value = "";
+      setFormError(getErrorMessage(error));
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -207,15 +238,22 @@ function App() {
       subject: String(form.get("subject") ?? ""),
       detail: String(form.get("detail") ?? ""),
     };
+    const imageEntry = form.get("image");
+    const image =
+      imageEntry instanceof File && imageEntry.size > 0 ? imageEntry : undefined;
 
     setFormError("");
     setIsSubmitting(true);
 
     try {
-      const newTicket = await createTicket(input);
+      const newTicket = await createTicket(input, image);
       setTickets((current) => [newTicket, ...current]);
       setSubmittedCode(newTicket.code);
       formElement.reset();
+      setRequestImagePreview((current) => {
+        if (current) URL.revokeObjectURL(current);
+        return "";
+      });
     } catch (error) {
       setFormError(getErrorMessage(error));
     } finally {
@@ -485,6 +523,13 @@ function App() {
                     </div>
                     <h3>{ticket.subject}</h3>
                     <p>{ticket.detail}</p>
+                    {ticket.imagePath && (
+                      <AttachmentImage
+                        path={ticket.imagePath}
+                        alt={`รูปประกอบคำขอ ${ticket.code}`}
+                        className="ticket-attachment"
+                      />
+                    )}
                     <div className="ticket-meta">
                       <span className="avatar small">
                         {ticket.requesterName.charAt(0)}
@@ -603,7 +648,7 @@ function App() {
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {
-            if (event.currentTarget === event.target) setIsFormOpen(false);
+            if (event.currentTarget === event.target) closeRequestForm();
           }}
         >
           <section
@@ -614,7 +659,7 @@ function App() {
           >
             <button
               className="close-button"
-              onClick={() => setIsFormOpen(false)}
+              onClick={closeRequestForm}
               aria-label="ปิดฟอร์ม"
             >
               ×
@@ -632,7 +677,7 @@ function App() {
                 </p>
                 <button
                   className="primary-button"
-                  onClick={() => setIsFormOpen(false)}
+                  onClick={closeRequestForm}
                 >
                   กลับไปหน้ารายการ
                 </button>
@@ -752,6 +797,36 @@ function App() {
                         placeholder="อธิบายสิ่งที่เกิดขึ้น ข้อความแจ้งเตือน และเวลาที่เริ่มพบปัญหา"
                       />
                     </label>
+                    <div className="full-width request-image-field">
+                      <span>รูปประกอบ (ถ้ามี)</span>
+                      <input
+                        name="image"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleRequestImageChange}
+                      />
+                      <small>รองรับ JPG, PNG, WEBP หรือ GIF ขนาดไม่เกิน 5 MB</small>
+                      {requestImagePreview && (
+                        <span className="request-image-preview">
+                          <img src={requestImagePreview} alt="ตัวอย่างรูปที่จะส่ง" />
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              const input = event.currentTarget
+                                .closest(".request-image-field")
+                                ?.querySelector<HTMLInputElement>('input[type="file"]');
+                              if (input) input.value = "";
+                              setRequestImagePreview((current) => {
+                                if (current) URL.revokeObjectURL(current);
+                                return "";
+                              });
+                            }}
+                          >
+                            ลบรูป
+                          </button>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {formError && (
@@ -762,7 +837,7 @@ function App() {
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => setIsFormOpen(false)}
+                      onClick={closeRequestForm}
                     >
                       ยกเลิก
                     </button>
