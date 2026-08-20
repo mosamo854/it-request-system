@@ -7,6 +7,8 @@
 - Login ด้วย Supabase Auth (Email/Password)
 - แยกสิทธิ์ `admin` (ฝ่าย IT) และ `user` (พนักงานแต่ละแผนก)
 - Admin สร้างบัญชี User จากหน้าเว็บผ่าน Supabase Edge Function
+- Admin เพิ่มแผนกใหม่ได้จากหน้าจัดการผู้ใช้
+- การสร้าง User ต้องระบุเบอร์โทร โดยระบบเก็บเป็นรูปแบบ `+66...`
 - User ไม่มีหน้า Register และสมัครบัญชีเองไม่ได้
 - Admin เห็นทุกคำขอ เปลี่ยนสถานะ ตอบแชต เก็บสำรอง ลบถาวร และดูสถิติได้
 - User เห็นเฉพาะคำขอของตัวเอง ส่งคำขอ แชต และดูสถานะได้ แต่เปลี่ยนสถานะไม่ได้
@@ -31,9 +33,11 @@
 3. คัดลอกโค้ดทั้งหมดจาก `supabase/schema.sql`
 4. กด **Run**
 
-ไฟล์ SQL จะสร้างตาราง `profiles`, ตาราง `it_requests`, ตารางแชต `it_request_messages`, role, requester ownership, คลังสำรอง, Storage bucket ส่วนตัว, trigger, Realtime และ RLS policies ที่แยกสิทธิ์ Admin/User
+ไฟล์ SQL จะสร้างตาราง `departments`, `profiles`, `it_requests`, ตารางแชต `it_request_messages`, role, requester ownership, เบอร์โทร, คลังสำรอง, Storage bucket ส่วนตัว, trigger, Realtime และ RLS policies ที่แยกสิทธิ์ Admin/User
 
-หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้ง สคริปต์จะสร้าง Profile ให้บัญชี Auth เดิมเป็น role `user` และเชื่อมคำขอเดิมกับบัญชีที่อีเมลตรงกัน โดยไม่ลบคำขอ ข้อความ หรือรูปภาพเดิม
+หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้ง สคริปต์จะย้ายรายชื่อแผนกเดิมเข้าสู่ตาราง `departments`, เพิ่มคอลัมน์ `phone`, สร้าง Profile ให้บัญชี Auth เดิมเป็น role `user` และเชื่อมคำขอเดิมกับบัญชีที่อีเมลตรงกัน โดยไม่ลบคำขอ ข้อความ หรือรูปภาพเดิม
+
+เบอร์โทรของบัญชีเดิมจะเป็นค่าว่างได้ แต่การสร้าง User ใหม่จากหน้า Admin จะบังคับกรอกเบอร์ไทย เช่น `0812345678` หรือ `+66812345678` และบันทึกเป็นรูปแบบ `+66...`
 
 รูปภาพรองรับไฟล์ JPG, PNG, WEBP และ GIF ขนาดไม่เกิน 5 MB ไฟล์จะอยู่ใน bucket แบบ private และหน้าเว็บจะสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่ Login แล้ว
 
@@ -84,6 +88,12 @@ npx supabase functions deploy purge-backups --no-verify-jwt
 ต้องใช้ `--no-verify-jwt` เพื่อให้ Cron เรียกฟังก์ชันด้วย Cleanup Secret ได้ ตัวฟังก์ชันยังตรวจความปลอดภัยเองทุกครั้ง: การลบจากหน้าเว็บต้องเป็นบัญชี `admin` ส่วนการลบอัตโนมัติต้องส่ง Cleanup Secret ที่ตรงกัน
 
 Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างบัญชี User และใช้ปุ่ม **ลบถาวรทันที** ในคลังสำรองได้
+
+หากอัปเดตจากเวอร์ชันก่อนที่ยังไม่มีแผนกแบบไดนามิกและเบอร์โทร ต้อง Run `schema.sql` รุ่นล่าสุดก่อน แล้ว Deploy `create-user` ใหม่:
+
+```bash
+npx supabase functions deploy create-user
+```
 
 ## 4. ตั้งเวลาลบ Backup อัตโนมัติ 7 วัน
 
@@ -147,11 +157,13 @@ src/
 ├─ components/StatisticsPage.tsx # สถิติรายวัน/เดือน/ปีและกราฟแนวโน้ม
 ├─ components/UserManagementPage.tsx # Admin สร้างและดูรายชื่อ User
 ├─ lib/supabase.ts           # Supabase client และ Auth client
+├─ services/departmentService.ts # โหลดและเพิ่มแผนก
 ├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
 ├─ services/profileService.ts # Profile, role และเรียก Edge Function
 ├─ services/ticketService.ts # คำสั่ง select/insert/update
 ├─ types/message.ts          # TypeScript type ของข้อความ
+├─ types/department.ts       # TypeScript type ของแผนก
 ├─ types/profile.ts          # TypeScript type ของ Admin/User
 ├─ types/ticket.ts           # TypeScript types
 ├─ App.tsx                   # Session guard, dashboard และ state หลัก
@@ -177,6 +189,7 @@ supabase/
 | ลบ Backup ถาวร | ได้ | ไม่ได้ |
 | ดูสถิติ | ได้ | ไม่ได้ |
 | สร้างบัญชี User | ได้ | ไม่ได้ |
+| เพิ่มแผนก | ได้ | ไม่ได้ |
 
 การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Functions การสร้าง User ใช้ `auth.admin.createUser()` เฉพาะฝั่ง Server ส่วนการลบถาวรใช้ Service Role เฉพาะใน `purge-backups` และตรวจ role หรือ Cleanup Secret ก่อนทุกครั้ง
 

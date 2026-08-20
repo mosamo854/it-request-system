@@ -7,6 +7,7 @@ import LoginPage from "./components/LoginPage";
 import StatisticsPage from "./components/StatisticsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import { supabase } from "./lib/supabase";
+import { getDepartments } from "./services/departmentService";
 import { validateImage } from "./services/imageService";
 import { getCurrentProfile } from "./services/profileService";
 import {
@@ -24,16 +25,11 @@ import type {
   TicketStatus,
 } from "./types/ticket";
 import type { UserProfile } from "./types/profile";
+import type { Department } from "./types/department";
 
 type AppView = "dashboard" | "statistics" | "archive" | "users";
 
-const departments = [
-  "ทุกแผนก",
-  "ฝ่ายขาย",
-  "ฝ่ายบุคคล",
-  "ฝ่ายบัญชี",
-  "ฝ่ายปฏิบัติการ",
-] as const;
+const ALL_DEPARTMENTS = "ทุกแผนก";
 
 const statusMeta: Record<
   TicketStatus,
@@ -97,8 +93,9 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [activeView, setActiveView] = useState<AppView>("dashboard");
-  const [activeDepartment, setActiveDepartment] = useState("ทุกแผนก");
+  const [activeDepartment, setActiveDepartment] = useState(ALL_DEPARTMENTS);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "all">("all");
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -147,6 +144,7 @@ function App() {
   useEffect(() => {
     if (!session) {
       setTickets([]);
+      setDepartments([]);
       setProfile(null);
       setIsLoading(false);
       return;
@@ -159,13 +157,15 @@ function App() {
       setIsLoading(true);
       setPageError("");
       try {
-        const [profileData, ticketData] = await Promise.all([
+        const [profileData, ticketData, departmentData] = await Promise.all([
           getCurrentProfile(sessionUserId),
           getTickets(),
+          getDepartments(),
         ]);
         if (isMounted) {
           setProfile(profileData);
           setTickets(ticketData);
+          setDepartments(departmentData);
         }
       } catch (error) {
         if (isMounted) {
@@ -185,6 +185,11 @@ function App() {
 
   const isAdmin = profile?.role === "admin";
 
+  const departmentNames = useMemo(
+    () => [ALL_DEPARTMENTS, ...departments.map((department) => department.name)],
+    [departments],
+  );
+
   const activeTickets = useMemo(
     () => (isAdmin ? tickets.filter((ticket) => !ticket.archivedAt) : tickets),
     [isAdmin, tickets],
@@ -200,7 +205,7 @@ function App() {
 
     return activeTickets.filter((ticket) => {
       const matchesDepartment =
-        activeDepartment === "ทุกแผนก" ||
+        activeDepartment === ALL_DEPARTMENTS ||
         ticket.department === activeDepartment;
       const matchesStatus =
         statusFilter === "all" || ticket.status === statusFilter;
@@ -721,7 +726,7 @@ function App() {
             </div>
 
             {isAdmin && <div className="department-tabs" aria-label="กรองตามแผนก">
-              {departments.map((department) => (
+              {departmentNames.map((department) => (
                 <button
                   key={department}
                   className={activeDepartment === department ? "active" : ""}
@@ -838,11 +843,13 @@ function App() {
             </div>
 
             <div className="department-list">
-              {departments.slice(1).map((department, index) => {
+              {departmentNames.slice(1).map((department, index) => {
                 const total = activeTickets.filter(
                   (ticket) => ticket.department === department,
                 ).length;
-                const palette = ["blue", "violet", "orange", "green"][index];
+                const palette = ["blue", "violet", "orange", "green"][
+                  index % 4
+                ];
 
                 return (
                   <button
@@ -907,7 +914,17 @@ function App() {
       )}
 
       {isAdmin && activeView === "users" && (
-        <UserManagementPage currentProfile={profile} />
+        <UserManagementPage
+          currentProfile={profile}
+          departments={departments}
+          onDepartmentCreated={(department) =>
+            setDepartments((current) =>
+              [...current, department].sort((left, right) =>
+                left.name.localeCompare(right.name, "th"),
+              ),
+            )
+          }
+        />
       )}
 
       {isFormOpen && (

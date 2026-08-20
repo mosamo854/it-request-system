@@ -1,20 +1,17 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createDepartment } from "../services/departmentService";
 import {
   createManagedUser,
   getProfiles,
 } from "../services/profileService";
+import type { Department } from "../types/department";
 import type { CreateManagedUserInput, UserProfile } from "../types/profile";
 
 interface UserManagementPageProps {
   currentProfile: UserProfile;
+  departments: Department[];
+  onDepartmentCreated: (department: Department) => void;
 }
-
-const departments = [
-  "ฝ่ายขาย",
-  "ฝ่ายบุคคล",
-  "ฝ่ายบัญชี",
-  "ฝ่ายปฏิบัติการ",
-];
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -30,8 +27,21 @@ function formatDate(value: string) {
   });
 }
 
+function formatPhone(value: string | null) {
+  if (!value) return "ยังไม่ระบุเบอร์โทร";
+  if (!/^\+66[0-9]{8,9}$/.test(value)) return value;
+
+  const localNumber = `0${value.slice(3)}`;
+  if (localNumber.length === 10) {
+    return localNumber.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3");
+  }
+  return localNumber.replace(/^(\d{2})(\d{3})(\d{4})$/, "$1-$2-$3");
+}
+
 export default function UserManagementPage({
   currentProfile,
+  departments,
+  onDepartmentCreated,
 }: UserManagementPageProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [query, setQuery] = useState("");
@@ -39,6 +49,10 @@ export default function UserManagementPage({
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [departmentName, setDepartmentName] = useState("");
+  const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
+  const [departmentError, setDepartmentError] = useState("");
+  const [departmentSuccess, setDepartmentSuccess] = useState("");
 
   async function loadUsers() {
     setIsLoading(true);
@@ -61,7 +75,7 @@ export default function UserManagementPage({
     return users.filter((user) =>
       !normalized
         ? true
-        : [user.fullName, user.email, user.department, user.role]
+        : [user.fullName, user.email, user.phone, user.department, user.role]
             .join(" ")
             .toLowerCase()
             .includes(normalized),
@@ -87,6 +101,7 @@ export default function UserManagementPage({
       fullName: String(form.get("fullName") ?? ""),
       email: String(form.get("email") ?? ""),
       department: String(form.get("department") ?? ""),
+      phone: String(form.get("phone") ?? ""),
       password,
     };
 
@@ -103,8 +118,29 @@ export default function UserManagementPage({
     }
   }
 
+  async function handleCreateDepartment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setDepartmentError("");
+    setDepartmentSuccess("");
+    setIsCreatingDepartment(true);
+
+    try {
+      const department = await createDepartment(departmentName);
+      onDepartmentCreated(department);
+      setDepartmentName("");
+      setDepartmentSuccess(`เพิ่มแผนก ${department.name} สำเร็จแล้ว`);
+    } catch (error) {
+      setDepartmentError(getErrorMessage(error));
+    } finally {
+      setIsCreatingDepartment(false);
+    }
+  }
+
   const normalUsers = users.filter((user) => user.role === "user").length;
   const admins = users.filter((user) => user.role === "admin").length;
+  const userDepartments = departments.filter(
+    (department) => department.name !== "ฝ่าย IT",
+  );
 
   return (
     <section className="content subpage-content" id="users-top">
@@ -122,6 +158,42 @@ export default function UserManagementPage({
         <article><small>บัญชีทั้งหมด</small><strong>{users.length}</strong><span>บัญชี</span></article>
         <article><small>ผู้ใช้งานทั่วไป</small><strong>{normalUsers}</strong><span>บัญชี</span></article>
         <article><small>ผู้ดูแลฝ่าย IT</small><strong>{admins}</strong><span>บัญชี</span></article>
+        <article><small>แผนกทั้งหมด</small><strong>{departments.length}</strong><span>แผนก</span></article>
+      </section>
+
+      <section className="department-management-card">
+        <div>
+          <span className="eyebrow">Department directory</span>
+          <h2>จัดการแผนก</h2>
+          <p>แผนกที่เพิ่มใหม่จะปรากฏในฟอร์มสร้าง User และตัวกรองคำขอทันที</p>
+        </div>
+        <form onSubmit={handleCreateDepartment}>
+          <label>
+            <span>ชื่อแผนกใหม่</span>
+            <input
+              value={departmentName}
+              onChange={(event) => setDepartmentName(event.target.value)}
+              placeholder="เช่น ฝ่ายการตลาด"
+              required
+              minLength={2}
+              maxLength={80}
+            />
+          </label>
+          <button className="primary-button" disabled={isCreatingDepartment}>
+            {isCreatingDepartment ? "กำลังเพิ่ม…" : "＋ เพิ่มแผนก"}
+          </button>
+        </form>
+        <div className="department-chip-list" aria-label="รายชื่อแผนก">
+          {departments.map((department) => (
+            <span key={department.id}>{department.name}</span>
+          ))}
+        </div>
+        {departmentError && (
+          <p className="notice error-notice">{departmentError}</p>
+        )}
+        {departmentSuccess && (
+          <p className="notice success-notice">{departmentSuccess}</p>
+        )}
       </section>
 
       <section className="user-management-layout">
@@ -146,11 +218,26 @@ export default function UserManagementPage({
               <input name="email" type="email" required />
             </label>
             <label>
+              <span>เบอร์โทร *</span>
+              <input
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="0812345678"
+                required
+                minLength={9}
+                maxLength={20}
+              />
+              <small>รองรับ 0812345678 หรือ +66812345678</small>
+            </label>
+            <label>
               <span>แผนก *</span>
               <select name="department" required defaultValue="">
                 <option value="" disabled>เลือกแผนก</option>
-                {departments.map((department) => (
-                  <option key={department}>{department}</option>
+                {userDepartments.map((department) => (
+                  <option key={department.id} value={department.name}>
+                    {department.name}
+                  </option>
                 ))}
               </select>
             </label>
@@ -166,7 +253,10 @@ export default function UserManagementPage({
             {errorMessage && <p className="notice error-notice">{errorMessage}</p>}
             {successMessage && <p className="notice success-notice">{successMessage}</p>}
 
-            <button className="primary-button create-user-button" disabled={isCreating}>
+            <button
+              className="primary-button create-user-button"
+              disabled={isCreating || userDepartments.length === 0}
+            >
               {isCreating ? "กำลังสร้างบัญชี…" : "＋ สร้างบัญชี User"}
             </button>
           </form>
@@ -183,7 +273,7 @@ export default function UserManagementPage({
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="ค้นหาชื่อ อีเมล หรือแผนก"
+                placeholder="ค้นหาชื่อ อีเมล เบอร์โทร หรือแผนก"
               />
             </label>
           </div>
@@ -197,6 +287,7 @@ export default function UserManagementPage({
                 <span>
                   <strong>{user.fullName}</strong>
                   <small>{user.email}</small>
+                  <small className="user-phone">☎ {formatPhone(user.phone)}</small>
                 </span>
                 <span className="user-department">{user.department ?? "ยังไม่ระบุแผนก"}</span>
                 <span className={`role-badge role-${user.role}`}>

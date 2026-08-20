@@ -10,6 +10,7 @@ interface ProfileRow {
   email: string;
   full_name: string;
   department: string | null;
+  phone: string | null;
   role: UserRole;
   created_at: string;
 }
@@ -20,6 +21,7 @@ function mapProfile(row: ProfileRow): UserProfile {
     email: row.email,
     fullName: row.full_name,
     department: row.department,
+    phone: row.phone ?? null,
     role: row.role,
     createdAt: row.created_at,
   };

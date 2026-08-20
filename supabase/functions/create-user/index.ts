@@ -6,18 +6,20 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const allowedDepartments = new Set([
-  "ฝ่ายขาย",
-  "ฝ่ายบุคคล",
-  "ฝ่ายบัญชี",
-  "ฝ่ายปฏิบัติการ",
-]);
-
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function normalizeThaiPhone(value: string) {
+  const normalized = value.replace(/[^0-9+]/g, "");
+  if (/^0[0-9]{8,9}$/.test(normalized)) {
+    return `+66${normalized.slice(1)}`;
+  }
+  if (/^\+66[0-9]{8,9}$/.test(normalized)) return normalized;
+  return null;
 }
 
 Deno.serve(async (request: Request) => {
@@ -71,6 +73,7 @@ Deno.serve(async (request: Request) => {
     const email = String(payload.email ?? "").trim().toLowerCase();
     const password = String(payload.password ?? "");
     const department = String(payload.department ?? "").trim();
+    const phone = normalizeThaiPhone(String(payload.phone ?? "").trim());
 
     if (fullName.length < 2 || fullName.length > 120) {
       return jsonResponse({ error: "ชื่อผู้ใช้ต้องมี 2–120 ตัวอักษร" }, 400);
@@ -81,7 +84,24 @@ Deno.serve(async (request: Request) => {
     if (password.length < 8) {
       return jsonResponse({ error: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" }, 400);
     }
-    if (!allowedDepartments.has(department)) {
+    if (!phone) {
+      return jsonResponse(
+        { error: "กรุณากรอกเบอร์โทรไทย เช่น 0812345678 หรือ +66812345678" },
+        400,
+      );
+    }
+
+    const { data: departmentRow, error: departmentLookupError } =
+      await adminClient
+        .from("departments")
+        .select("id")
+        .eq("name", department)
+        .maybeSingle();
+
+    if (departmentLookupError) {
+      return jsonResponse({ error: departmentLookupError.message }, 500);
+    }
+    if (!departmentRow || department === "ฝ่าย IT") {
       return jsonResponse({ error: "กรุณาเลือกแผนกที่ถูกต้อง" }, 400);
     }
 
@@ -93,6 +113,7 @@ Deno.serve(async (request: Request) => {
         user_metadata: {
           full_name: fullName,
           department,
+          phone,
         },
       });
 
@@ -108,6 +129,7 @@ Deno.serve(async (request: Request) => {
       email,
       full_name: fullName,
       department,
+      phone,
       role: "user",
     };
     const { error: saveProfileError } = await adminClient

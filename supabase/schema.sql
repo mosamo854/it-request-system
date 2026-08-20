@@ -4,20 +4,101 @@ create extension if not exists pgcrypto;
 
 create schema if not exists private;
 
+create table if not exists public.departments (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique check (
+    name = trim(name)
+    and char_length(name) between 2 and 80
+    and name <> 'ทุกแผนก'
+  ),
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists departments_name_lower_idx
+  on public.departments (lower(name));
+
+insert into public.departments (name)
+values
+  ('ฝ่าย IT'),
+  ('ฝ่ายขาย'),
+  ('ฝ่ายบุคคล'),
+  ('ฝ่ายบัญชี'),
+  ('ฝ่ายปฏิบัติการ')
+on conflict do nothing;
+
+-- Preserve valid department metadata from Auth users created before this table.
+insert into public.departments (name)
+select distinct trim(raw_user_meta_data ->> 'department')
+from auth.users
+where nullif(trim(raw_user_meta_data ->> 'department'), '') is not null
+  and char_length(trim(raw_user_meta_data ->> 'department')) between 2 and 80
+  and trim(raw_user_meta_data ->> 'department') <> 'ทุกแผนก'
+on conflict do nothing;
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   full_name text not null check (char_length(full_name) between 2 and 120),
-  department text check (
-    department is null
-    or department in (
-      'ฝ่าย IT', 'ฝ่ายขาย', 'ฝ่ายบุคคล', 'ฝ่ายบัญชี', 'ฝ่ายปฏิบัติการ'
-    )
-  ),
+  department text references public.departments(name) on update cascade,
+  phone text check (phone is null or phone ~ '^[+]66[0-9]{8,9}$'),
   role text not null default 'user' check (role in ('admin', 'user')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles
+  add column if not exists phone text;
+
+alter table public.profiles
+  drop constraint if exists profiles_department_check;
+
+alter table public.profiles
+  drop constraint if exists profiles_phone_check;
+
+alter table public.profiles
+  add constraint profiles_phone_check
+  check (phone is null or phone ~ '^[+]66[0-9]{8,9}$');
+
+insert into public.departments (name)
+select distinct trim(department)
+from public.profiles
+where nullif(trim(department), '') is not null
+on conflict do nothing;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_department_fkey'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_department_fkey
+      foreign key (department) references public.departments(name)
+      on update cascade;
+  end if;
+end
+$$;
+
+create or replace function private.normalize_thai_phone(raw_phone text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  with normalized as (
+    select regexp_replace(coalesce(raw_phone, ''), '[^0-9+]', '', 'g') as value
+  )
+  select case
+    when value ~ '^0[0-9]{8,9}$' then '+66' || substr(value, 2)
+    when value ~ '^[+]66[0-9]{8,9}$' then value
+    else null
+  end
+  from normalized;
+$$;
+
+revoke all on function private.normalize_thai_phone(text) from public;
 
 create or replace function public.handle_new_auth_user()
 returns trigger
@@ -30,7 +111,7 @@ begin
     return new;
   end if;
 
-  insert into public.profiles (id, email, full_name, department, role)
+  insert into public.profiles (id, email, full_name, department, phone, role)
   values (
     new.id,
     lower(coalesce(new.email, '')),
@@ -43,6 +124,7 @@ begin
       end
     ),
     nullif(trim(new.raw_user_meta_data ->> 'department'), ''),
+    private.normalize_thai_phone(new.raw_user_meta_data ->> 'phone'),
     'user'
   )
   on conflict (id) do update
@@ -58,7 +140,9 @@ after insert or update of email on auth.users
 for each row execute function public.handle_new_auth_user();
 
 -- Backfill profiles for accounts that existed before this role system.
-insert into public.profiles (id, email, full_name, department, role, created_at)
+insert into public.profiles (
+  id, email, full_name, department, phone, role, created_at
+)
 select
   id,
   lower(coalesce(email, '')),
@@ -71,6 +155,7 @@ select
     end
   ),
   nullif(trim(raw_user_meta_data ->> 'department'), ''),
+  private.normalize_thai_phone(raw_user_meta_data ->> 'phone'),
   'user',
   created_at
 from auth.users
@@ -113,9 +198,7 @@ create table if not exists public.it_requests (
   requester_user_id uuid references auth.users(id) on delete set null,
   requester_name text not null check (char_length(requester_name) between 2 and 120),
   requester_email text not null,
-  department text not null check (
-    department in ('ฝ่ายขาย', 'ฝ่ายบุคคล', 'ฝ่ายบัญชี', 'ฝ่ายปฏิบัติการ')
-  ),
+  department text not null references public.departments(name) on update cascade,
   category text not null,
   priority text not null default 'normal' check (
     priority in ('urgent', 'normal', 'low')
@@ -155,6 +238,15 @@ alter table public.it_requests
 alter table public.it_requests
   add column if not exists archived_by uuid;
 
+alter table public.it_requests
+  drop constraint if exists it_requests_department_check;
+
+insert into public.departments (name)
+select distinct trim(department)
+from public.it_requests
+where nullif(trim(department), '') is not null
+on conflict do nothing;
+
 do $$
 begin
   if not exists (
@@ -177,6 +269,18 @@ begin
     alter table public.it_requests
       add constraint it_requests_archived_by_fkey
       foreign key (archived_by) references auth.users(id) on delete set null;
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'it_requests_department_fkey'
+      and conrelid = 'public.it_requests'::regclass
+  ) then
+    alter table public.it_requests
+      add constraint it_requests_department_fkey
+      foreign key (department) references public.departments(name)
+      on update cascade;
   end if;
 end
 $$;
@@ -316,6 +420,25 @@ for each row execute function public.set_updated_at();
 alter table public.it_requests enable row level security;
 
 alter table public.profiles enable row level security;
+
+alter table public.departments enable row level security;
+
+drop policy if exists "Authenticated users can read departments"
+  on public.departments;
+create policy "Authenticated users can read departments"
+on public.departments for select
+to authenticated
+using (true);
+
+drop policy if exists "Admins can create departments"
+  on public.departments;
+create policy "Admins can create departments"
+on public.departments for insert
+to authenticated
+with check (private.is_admin());
+
+revoke all on table public.departments from anon, authenticated;
+grant select, insert on table public.departments to authenticated;
 
 drop policy if exists "Users can read their own profile and admins can read all"
   on public.profiles;

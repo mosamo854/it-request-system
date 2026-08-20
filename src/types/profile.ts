@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string;
   fullName: string;
   department: string | null;
+  phone: string | null;
   role: UserRole;
   createdAt: string;
 }
@@ -14,4 +15,5 @@ export interface CreateManagedUserInput {
   password: string;
   fullName: string;
   department: string;
+  phone: string;
 }

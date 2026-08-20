@@ -2761,7 +2761,7 @@ textarea:focus {
 .user-summary-grid {
   display: grid;
   max-width: 1480px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 13px;
   margin: 0 auto 16px;
 }
@@ -2790,6 +2790,86 @@ textarea:focus {
 .user-summary-grid span {
   color: #929dab;
   font-size: 8px;
+}
+
+.department-management-card {
+  display: grid;
+  max-width: 1480px;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.2fr);
+  align-items: center;
+  gap: 14px 28px;
+  margin: 0 auto 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 4px 18px #17375e08;
+}
+
+.department-management-card h2 {
+  margin: 3px 0 4px;
+  font-size: 16px;
+}
+
+.department-management-card > div:first-child p {
+  margin: 0;
+  color: #7c899b;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.department-management-card form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.department-management-card label {
+  display: grid;
+  gap: 5px;
+}
+
+.department-management-card label > span {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.department-management-card input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.department-management-card form .primary-button {
+  min-height: 40px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.department-chip-list {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 4px;
+  border-top: 1px solid #edf0f4;
+}
+
+.department-chip-list span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #3a6cae;
+  background: #edf5ff;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.department-management-card > .notice {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .user-management-layout {
@@ -2841,6 +2921,11 @@ textarea:focus {
   font-weight: 800;
 }
 
+.user-form-card label > small {
+  color: #8994a5;
+  font-size: 7px;
+}
+
 .user-form-card input,
 .user-form-card select {
   width: 100%;
@@ -2882,7 +2967,7 @@ textarea:focus {
   grid-template-columns: 38px minmax(150px, 1.2fr) minmax(100px, 0.8fr) 85px 75px;
   align-items: center;
   gap: 10px;
-  min-height: 67px;
+  min-height: 76px;
   padding: 10px 2px;
   border-bottom: 1px solid #edf0f4;
 }
@@ -2898,6 +2983,11 @@ textarea:focus {
 .user-list strong,
 .user-list small {
   display: block;
+}
+
+.user-list .user-phone {
+  margin-top: 2px;
+  color: #62758e;
 }
 
 .user-list strong {
@@ -3258,6 +3348,14 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .user-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .department-management-card {
+    grid-template-columns: 1fr;
+  }
+
   .user-form-card {
     width: min(520px, 100%);
   }
@@ -3402,6 +3500,18 @@ textarea:focus {
   .user-form-card,
   .user-list-card {
     padding: 16px;
+  }
+
+  .department-management-card {
+    padding: 16px;
+  }
+
+  .department-management-card form {
+    grid-template-columns: 1fr;
+  }
+
+  .department-management-card form .primary-button {
+    width: 100%;
   }
 
   .user-list > article {
