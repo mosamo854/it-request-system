@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import type {
   CreateManagedUserInput,
+  UpdateManagedUserInput,
   UserProfile,
   UserRole,
 } from "../types/profile";
@@ -64,11 +65,20 @@ async function getFunctionErrorMessage(error: unknown) {
   }
 
   if (error instanceof Error) return error.message;
-  return "สร้างผู้ใช้ไม่สำเร็จ";
+  return "ดำเนินการไม่สำเร็จ";
 }
 
 export async function createManagedUser(input: CreateManagedUserInput) {
   const { data, error } = await supabase.functions.invoke("create-user", {
+    body: input,
+  });
+
+  if (error) throw new Error(await getFunctionErrorMessage(error));
+  if (data?.error) throw new Error(String(data.error));
+}
+
+export async function updateManagedUser(input: UpdateManagedUserInput) {
+  const { data, error } = await supabase.functions.invoke("update-user", {
     body: input,
   });
 

@@ -2969,7 +2969,7 @@ textarea:focus {
 
 .user-list > article {
   display: grid;
-  grid-template-columns: 38px minmax(150px, 1.2fr) minmax(100px, 0.8fr) 85px 75px;
+  grid-template-columns: 38px minmax(150px, 1.2fr) minmax(100px, 0.8fr) 85px 75px 65px;
   align-items: center;
   gap: 10px;
   min-height: 76px;
@@ -3042,6 +3042,167 @@ textarea:focus {
   color: #929dab;
   font-size: 7px;
   text-align: right;
+}
+
+.user-edit-action {
+  justify-self: end;
+}
+
+.user-edit-action > small {
+  padding-right: 9px;
+  color: #a8b0bc;
+}
+
+.edit-user-button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid #cfe0f7;
+  border-radius: 8px;
+  color: #2367c4;
+  background: #f1f6ff;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.edit-user-button:hover {
+  border-color: #9dbfe9;
+  background: #e6f0ff;
+}
+
+.user-edit-success {
+  margin: 14px 0 3px;
+}
+
+.user-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: #071b3699;
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.2s ease;
+}
+
+.user-edit-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border: 1px solid #dce4ee;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 24px 80px #071a3552;
+}
+
+.user-edit-modal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.user-edit-modal-heading h2 {
+  margin: 4px 0 2px;
+  font-size: 18px;
+}
+
+.user-edit-modal-heading p {
+  margin: 0;
+  color: #7d899a;
+  font-size: 9px;
+}
+
+.user-edit-modal-heading > button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #dce4ee;
+  border-radius: 50%;
+  color: #617087;
+  background: #f6f8fb;
+  font-size: 21px;
+  cursor: pointer;
+}
+
+.user-edit-modal-heading > button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.user-edit-modal form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 22px 24px 24px;
+}
+
+.user-edit-modal form > label {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.user-edit-modal form > label > span {
+  color: #33435a;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.user-edit-modal form > label > small {
+  color: #8994a5;
+  font-size: 7px;
+}
+
+.user-edit-modal input,
+.user-edit-modal select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 10px;
+}
+
+.user-edit-password-note,
+.user-edit-form-notice,
+.user-edit-form-actions {
+  grid-column: 1 / -1;
+}
+
+.user-edit-password-note {
+  margin-top: 3px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  color: #64758c;
+  background: #f2f6fb;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.user-edit-form-notice {
+  margin: 0;
+}
+
+.user-edit-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding-top: 4px;
+}
+
+.user-edit-form-actions .primary-button,
+.user-edit-form-actions .secondary-button {
+  min-width: 125px;
+  min-height: 40px;
+  margin: 0;
 }
 
 .user-list-loading {
@@ -3536,6 +3697,56 @@ textarea:focus {
   .user-list time {
     grid-column: 3;
     grid-row: 2;
+  }
+
+  .user-edit-action {
+    grid-column: 2 / -1;
+    grid-row: 3;
+    justify-self: stretch;
+    margin-top: 6px;
+  }
+
+  .edit-user-button {
+    width: 100%;
+  }
+
+  .user-edit-action > small {
+    display: none;
+  }
+
+  .user-edit-backdrop {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .user-edit-modal {
+    max-height: calc(100vh - 28px);
+    border-radius: 17px;
+  }
+
+  .user-edit-modal-heading {
+    padding: 18px;
+  }
+
+  .user-edit-modal form {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .user-edit-password-note,
+  .user-edit-form-notice,
+  .user-edit-form-actions {
+    grid-column: auto;
+  }
+
+  .user-edit-form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .user-edit-form-actions .primary-button,
+  .user-edit-form-actions .secondary-button {
+    min-width: 0;
   }
 
   .requester-profile-summary {
