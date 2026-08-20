@@ -2,6 +2,8 @@
 
 ระบบรับแจ้งปัญหา IT สำหรับหลายแผนก พัฒนาด้วย React, TypeScript, Vite และ Supabase
 
+หน้าเว็บใช้ฟอนต์ `Noto Sans Thai` จาก Google Fonts พร้อม fallback เป็น `Leelawadee UI`, Tahoma และ Arial เพื่อให้ภาษาไทยอ่านง่ายและแสดงผลได้ต่อเนื่องหากโหลดฟอนต์ออนไลน์ไม่ได้
+
 ## ฟีเจอร์
 
 - Login ด้วย Supabase Auth (Email/Password)
