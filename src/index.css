@@ -83,7 +83,7 @@ button {
   border-radius: 13px;
   color: var(--navy);
   background: white;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: -1px;
   box-shadow: 0 8px 20px #071d3c42;
@@ -97,13 +97,13 @@ button {
 }
 
 .brand strong {
-  font-size: 19px;
+  font-size: 22px;
 }
 
 .brand small {
   margin-top: 1px;
   color: #b9c9e3;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -126,7 +126,7 @@ button {
   border-radius: 12px;
   color: #c9d6ea;
   background: transparent;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 600;
   text-align: left;
   text-decoration: none;
@@ -137,7 +137,7 @@ button {
 .side-nav button > span {
   width: 20px;
   text-align: center;
-  font-size: 19px;
+  font-size: 22px;
 }
 
 .side-nav a b,
@@ -148,7 +148,7 @@ button {
   border-radius: 999px;
   color: #dce9ff;
   background: #ffffff16;
-  font-size: 11px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -196,13 +196,13 @@ button {
 }
 
 .sidebar-help strong {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .sidebar-help p {
   margin: 6px 0 0;
   color: #aebfda;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.6;
 }
 
@@ -230,12 +230,12 @@ button {
 }
 
 .profile-mini strong {
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .profile-mini small {
   color: #aebfda;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .profile-mini button {
@@ -270,7 +270,7 @@ button {
 
 .eyebrow {
   color: #8590a2;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -354,7 +354,7 @@ button {
   border: 1px solid #ffffff35;
   border-radius: 999px;
   background: #ffffff10;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -377,7 +377,7 @@ button {
   max-width: 500px;
   margin: 0 0 20px;
   color: #d9e8ff;
-  font-size: 13px;
+  font-size: 16px;
   line-height: 1.8;
 }
 
@@ -459,7 +459,7 @@ button {
   border-radius: 50%;
   color: white;
   background: #21b783;
-  font-size: 25px;
+  font-size: 28px;
   font-weight: 900;
   box-shadow: 0 7px 18px #09694a40;
 }
@@ -542,7 +542,7 @@ button {
   place-items: center;
   margin-right: 12px;
   border-radius: 13px;
-  font-size: 21px;
+  font-size: 24px;
   font-weight: 800;
 }
 
@@ -573,12 +573,12 @@ button {
 
 .stat-card small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .stat-card strong {
   margin-top: 2px;
-  font-size: 25px;
+  font-size: 28px;
   line-height: 1.1;
 }
 
@@ -587,7 +587,7 @@ button {
   right: 15px;
   bottom: 13px;
   color: #91a0b4;
-  font-size: 9px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -627,7 +627,7 @@ button {
 }
 
 .section-heading h2 {
-  font-size: 18px;
+  font-size: 21px;
 }
 
 .result-count {
@@ -635,7 +635,7 @@ button {
   border-radius: 99px;
   color: #536176;
   background: #f1f4f8;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -643,7 +643,7 @@ button {
   margin: 12px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .error-notice {
@@ -671,7 +671,7 @@ button {
 .search-box > span {
   margin-right: 8px;
   color: #8190a4;
-  font-size: 18px;
+  font-size: 21px;
 }
 
 .search-box input {
@@ -680,7 +680,7 @@ button {
   outline: 0;
   color: var(--ink);
   background: transparent;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 select,
@@ -702,7 +702,7 @@ textarea:focus {
 .toolbar > select {
   padding: 0 12px;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .department-tabs {
@@ -721,7 +721,7 @@ textarea:focus {
   border-radius: 8px;
   color: #6e7b8f;
   background: transparent;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -779,7 +779,7 @@ textarea:focus {
 .ticket-code {
   color: #296ac5;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -789,7 +789,7 @@ textarea:focus {
   gap: 5px;
   padding: 4px 8px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -805,7 +805,7 @@ textarea:focus {
   border-radius: 999px;
   color: #637084;
   background: #edf1f5;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -826,13 +826,13 @@ textarea:focus {
 
 .ticket-main h3 {
   margin: 8px 0 5px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .ticket-main > p {
   margin: 0;
   color: #778397;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.65;
 }
 
@@ -859,7 +859,7 @@ textarea:focus {
   color: #8793a4;
   background: linear-gradient(100deg, #edf2f7 30%, #f8fafc 50%, #edf2f7 70%);
   background-size: 220% 100%;
-  font-size: 8px;
+  font-size: 11px;
   animation: image-loading 1.2s linear infinite;
 }
 
@@ -884,7 +884,7 @@ textarea:focus {
 .avatar.small {
   width: 27px;
   height: 27px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ticket-meta b,
@@ -893,12 +893,12 @@ textarea:focus {
 }
 
 .ticket-meta b {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .ticket-meta small {
   color: #8995a6;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .meta-divider {
@@ -911,7 +911,7 @@ textarea:focus {
 .priority-label {
   padding: 3px 7px;
   border-radius: 5px;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -933,7 +933,7 @@ textarea:focus {
 .ticket-meta time {
   margin-left: auto;
   color: #9aa4b3;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .ticket-action {
@@ -951,7 +951,7 @@ textarea:focus {
 
 .ticket-action label > span {
   color: #8b96a7;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -961,7 +961,7 @@ textarea:focus {
   height: 35px;
   padding: 0 8px;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -976,7 +976,7 @@ textarea:focus {
   border-radius: 8px;
   color: #2669c8;
   background: #f3f8ff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -997,7 +997,7 @@ textarea:focus {
   border-radius: 8px;
   color: #b74b57;
   background: #fff4f5;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1019,18 +1019,18 @@ textarea:focus {
 
 .empty-state > span {
   color: #a8b4c4;
-  font-size: 32px;
+  font-size: 35px;
 }
 
 .empty-state h3 {
   margin: 5px 0;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .empty-state p {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .department-list {
@@ -1061,7 +1061,7 @@ textarea:focus {
   height: 37px;
   place-items: center;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 900;
 }
 
@@ -1091,12 +1091,12 @@ textarea:focus {
 }
 
 .department-list strong {
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .department-list small {
   color: #8b96a7;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .department-list button > i {
@@ -1115,7 +1115,7 @@ textarea:focus {
 
 .department-list button > span:last-child {
   color: #a2acba;
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .sla-card {
@@ -1150,7 +1150,7 @@ textarea:focus {
   position: relative;
   z-index: 1;
   color: #2565bd;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .sla-card div small,
@@ -1160,19 +1160,19 @@ textarea:focus {
 
 .sla-card div small {
   color: #718096;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .sla-card div strong {
   margin: 2px 0;
   color: #174c97;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .sla-card p {
   margin: 0;
   color: #8894a6;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .chat-backdrop {
@@ -1210,14 +1210,14 @@ textarea:focus {
 .chat-header h2 {
   max-width: 345px;
   margin: 7px 0 3px;
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.4;
 }
 
 .chat-header p {
   margin: 0;
   color: #cfe0f8;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .chat-header > button {
@@ -1230,7 +1230,7 @@ textarea:focus {
   border-radius: 50%;
   color: white;
   background: #ffffff12;
-  font-size: 21px;
+  font-size: 24px;
   cursor: pointer;
 }
 
@@ -1238,7 +1238,7 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1270,14 +1270,14 @@ textarea:focus {
 }
 
 .chat-context strong {
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .chat-context p > span {
   max-width: 355px;
   overflow: hidden;
   color: #7c889a;
-  font-size: 8px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1298,7 +1298,7 @@ textarea:focus {
   gap: 9px;
   min-height: 160px;
   color: #8490a2;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .chat-loading .loading-spinner {
@@ -1324,20 +1324,20 @@ textarea:focus {
   border-radius: 16px 16px 16px 5px;
   color: #3978d1;
   background: #e4efff;
-  font-size: 20px;
+  font-size: 23px;
   letter-spacing: 2px;
 }
 
 .chat-empty h3 {
   margin: 12px 0 4px;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .chat-empty p {
   max-width: 270px;
   margin: 0;
   color: #8792a3;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 
@@ -1362,7 +1362,7 @@ textarea:focus {
   border-radius: 50%;
   color: #285fa0;
   background: #d9e8ff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -1384,7 +1384,7 @@ textarea:focus {
 
 .chat-message small {
   color: #778599;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -1395,7 +1395,7 @@ textarea:focus {
   border-radius: 5px 13px 13px 13px;
   color: #33435b;
   background: white;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1412,7 +1412,7 @@ textarea:focus {
 
 .chat-message time {
   color: #97a1b0;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .chat-message.own small,
@@ -1444,7 +1444,7 @@ textarea:focus {
   padding: 10px 11px;
   border-radius: 10px;
   background: #fafbfc;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.5;
   resize: none;
 }
@@ -1455,7 +1455,7 @@ textarea:focus {
   border-radius: 10px;
   color: white;
   background: var(--blue);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1474,7 +1474,7 @@ textarea:focus {
   border-radius: 10px;
   color: #3975c9;
   background: #f3f7fc;
-  font-size: 20px;
+  font-size: 23px;
   font-weight: 400;
   cursor: pointer;
 }
@@ -1523,14 +1523,14 @@ textarea:focus {
   border-radius: 50%;
   color: white;
   background: #16243cbd;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .chat-compose > small {
   display: block;
   margin-top: 6px;
   color: #9aa4b2;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .chat-error {
@@ -1539,7 +1539,7 @@ textarea:focus {
   border-radius: 7px;
   color: #aa4652;
   background: #fff0f2;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .modal-backdrop {
@@ -1579,19 +1579,19 @@ textarea:focus {
   border-radius: 50%;
   color: #69768a;
   background: #f1f4f7;
-  font-size: 22px;
+  font-size: 25px;
   cursor: pointer;
 }
 
 .modal-heading h2 {
   margin: 4px 0 3px;
-  font-size: 25px;
+  font-size: 28px;
 }
 
 .modal-heading p {
   margin: 0 0 21px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .form-grid {
@@ -1607,7 +1607,7 @@ textarea:focus {
 
 .form-grid > label > span,
 .priority-fieldset legend {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1617,7 +1617,7 @@ textarea:focus {
   width: 100%;
   padding: 11px 12px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 14px;
   resize: vertical;
 }
 
@@ -1644,18 +1644,18 @@ textarea:focus {
 
 .requester-profile-summary small {
   color: #7b899e;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .requester-profile-summary strong {
   margin: 1px 0;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .requester-profile-summary b {
   overflow: hidden;
   color: #66758b;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1663,14 +1663,14 @@ textarea:focus {
 
 .requester-profile-summary > i {
   color: #3973c3;
-  font-size: 8px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 700;
 }
 
 .request-image-field > small {
   color: #8b96a7;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .request-image-field {
@@ -1679,7 +1679,7 @@ textarea:focus {
 }
 
 .request-image-field > span:first-child {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1696,7 +1696,7 @@ textarea:focus {
   border-radius: 7px;
   color: #2566bf;
   background: #e9f2ff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1729,7 +1729,7 @@ textarea:focus {
   border-radius: 6px;
   color: white;
   background: #17243cce;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1773,7 +1773,7 @@ textarea:focus {
   padding: 10px;
   border: 1px solid #e0e5ec;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1804,7 +1804,7 @@ textarea:focus {
 .priority-options small {
   grid-column: 2;
   color: #8b96a7;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -1841,18 +1841,18 @@ textarea:focus {
   color: white;
   background: #1aaa78;
   box-shadow: 0 10px 25px #1aaa7833;
-  font-size: 30px;
+  font-size: 33px;
   font-weight: 900;
 }
 
 .success-view h2 {
   margin: 5px 0 8px;
-  font-size: 28px;
+  font-size: 31px;
 }
 
 .success-view p {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
   line-height: 1.8;
 }
 
@@ -1866,7 +1866,7 @@ textarea:focus {
   border-radius: 7px;
   color: #cbd8eb !important;
   background: #ffffff0b !important;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1887,7 +1887,7 @@ textarea:focus {
 
 .auth-loading p {
   margin: 0;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .loading-spinner {
@@ -1943,12 +1943,12 @@ textarea:focus {
 }
 
 .login-brand strong {
-  font-size: 19px;
+  font-size: 22px;
 }
 
 .login-brand small {
   color: #bad0ee;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1971,7 +1971,7 @@ textarea:focus {
   max-width: 500px;
   margin: 0;
   color: #d5e4f8;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1.9;
 }
 
@@ -2044,7 +2044,7 @@ textarea:focus {
   border-radius: 50%;
   color: white;
   background: #20b57f;
-  font-size: 26px;
+  font-size: 29px;
 }
 
 .login-monitor > i {
@@ -2070,7 +2070,7 @@ textarea:focus {
   z-index: 3;
   margin-top: auto;
   color: #a8c0df;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .login-form-panel {
@@ -2098,7 +2098,7 @@ textarea:focus {
 .login-subtitle {
   margin: 0 0 29px;
   color: #758196;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .login-form {
@@ -2112,7 +2112,7 @@ textarea:focus {
 }
 
 .login-form > label > span {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -2134,7 +2134,7 @@ textarea:focus {
 .login-input > i {
   width: 21px;
   color: #8a99ae;
-  font-size: 11px;
+  font-size: 14px;
   font-style: normal;
   font-weight: 800;
 }
@@ -2144,7 +2144,7 @@ textarea:focus {
   border: 0;
   outline: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: 15px;
   box-shadow: none;
 }
 
@@ -2153,7 +2153,7 @@ textarea:focus {
   border: 0;
   color: #607189;
   background: transparent;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2169,7 +2169,7 @@ textarea:focus {
   border-radius: 10px;
   color: white;
   background: var(--blue);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
   box-shadow: 0 10px 25px #1769e82b;
   cursor: pointer;
@@ -2205,14 +2205,14 @@ textarea:focus {
   color: white;
   background: #4f8cdd;
   font-family: Georgia, serif;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
 }
 
 .admin-register-note p {
   margin: 0;
   color: #718097;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -2242,7 +2242,7 @@ textarea:focus {
 .subpage-header p {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .subpage-error {
@@ -2267,7 +2267,7 @@ textarea:focus {
   border-radius: 8px;
   color: #718096;
   background: transparent;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -2289,7 +2289,7 @@ textarea:focus {
   border-radius: 10px;
   color: #61718a;
   background: #f4f8ff;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .statistics-note strong {
@@ -2336,18 +2336,18 @@ textarea:focus {
 
 .analytics-summary small {
   color: #778397;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .analytics-summary strong {
   margin: 4px 0 2px;
-  font-size: 27px;
+  font-size: 30px;
 }
 
 .analytics-summary span {
   color: #8b96a7;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .analytics-layout {
@@ -2379,7 +2379,7 @@ textarea:focus {
 
 .analytics-card-heading h2 {
   margin: 3px 0 0;
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .analytics-loading {
@@ -2387,7 +2387,7 @@ textarea:focus {
   min-height: 270px;
   place-items: center;
   color: #8793a5;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .trend-chart-wrap {
@@ -2399,7 +2399,7 @@ textarea:focus {
   justify-content: flex-end;
   gap: 15px;
   color: #748196;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .chart-legend span {
@@ -2438,7 +2438,7 @@ textarea:focus {
 .chart-x-label {
   fill: #8793a5;
   font-family: inherit;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .chart-y-label {
@@ -2491,12 +2491,12 @@ textarea:focus {
 }
 
 .department-bars b {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .department-bars small {
   color: #8a96a7;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .department-bars > div > i {
@@ -2517,7 +2517,7 @@ textarea:focus {
 .mini-empty {
   margin: 35px 0;
   color: #8b96a7;
-  font-size: 9px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -2542,7 +2542,7 @@ textarea:focus {
   min-height: 43px;
   border-top: 1px solid #edf0f4;
   color: #66758b;
-  font-size: 9px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -2556,7 +2556,7 @@ textarea:focus {
   border-top: 0;
   color: #8b96a7;
   background: #fafbfc;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2566,7 +2566,7 @@ textarea:focus {
   border-radius: 99px;
   color: #536176;
   background: #e9eef4;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2595,13 +2595,13 @@ textarea:focus {
 }
 
 .archive-info strong {
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .archive-info p {
   margin: 2px 0 0;
   color: #85735b;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .archive-panel {
@@ -2625,7 +2625,7 @@ textarea:focus {
 
 .archive-toolbar > span {
   color: #7f8b9d;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -2650,7 +2650,7 @@ textarea:focus {
   border-radius: 999px;
   color: #66758a;
   background: #edf1f5;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2661,13 +2661,13 @@ textarea:focus {
 
 .archive-card h2 {
   margin: 8px 0 5px;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .archive-card-main > p {
   margin: 0;
   color: #778397;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.65;
 }
 
@@ -2688,12 +2688,12 @@ textarea:focus {
 
 .archive-meta small {
   color: #8b96a7;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .archive-meta b {
   margin-top: 2px;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .archive-actions {
@@ -2712,7 +2712,7 @@ textarea:focus {
   border-radius: 8px;
   color: #16805d;
   background: #edf9f4;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -2733,7 +2733,7 @@ textarea:focus {
   border-radius: 8px;
   color: #b52d2d;
   background: #fff3f3;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -2759,7 +2759,7 @@ textarea:focus {
   border-radius: 99px;
   color: #2867bd;
   background: #eef5ff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2784,17 +2784,17 @@ textarea:focus {
 
 .user-summary-grid small {
   color: #788599;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .user-summary-grid strong {
-  font-size: 25px;
+  font-size: 28px;
 }
 
 .user-summary-grid span {
   color: #929dab;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .department-management-card {
@@ -2813,13 +2813,13 @@ textarea:focus {
 
 .department-management-card h2 {
   margin: 3px 0 4px;
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .department-management-card > div:first-child p {
   margin: 0;
   color: #7c899b;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
@@ -2836,7 +2836,7 @@ textarea:focus {
 }
 
 .department-management-card label > span {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2845,7 +2845,7 @@ textarea:focus {
   min-height: 40px;
   padding: 0 11px;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .department-management-card form .primary-button {
@@ -2868,7 +2868,7 @@ textarea:focus {
   border-radius: 999px;
   color: #3a6cae;
   background: #edf5ff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -2898,7 +2898,7 @@ textarea:focus {
 .user-form-card h2,
 .user-list-card h2 {
   margin: 3px 0 0;
-  font-size: 16px;
+  font-size: 19px;
 }
 
 .user-form-note {
@@ -2907,7 +2907,7 @@ textarea:focus {
   border-radius: 8px;
   color: #62738c;
   background: #f2f6fb;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
@@ -2922,13 +2922,13 @@ textarea:focus {
 }
 
 .user-form-card label > span {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .user-form-card label > small {
   color: #8994a5;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .user-form-card input,
@@ -2937,7 +2937,7 @@ textarea:focus {
   min-height: 40px;
   padding: 0 11px;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .success-notice {
@@ -2997,7 +2997,7 @@ textarea:focus {
 
 .user-list strong {
   overflow: hidden;
-  font-size: 10px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3005,7 +3005,7 @@ textarea:focus {
 .user-list small {
   overflow: hidden;
   color: #8490a2;
-  font-size: 8px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3017,14 +3017,14 @@ textarea:focus {
 
 .user-department {
   color: #5e6d83;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .role-badge {
   justify-self: start;
   padding: 4px 8px;
   border-radius: 99px;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -3040,7 +3040,7 @@ textarea:focus {
 
 .user-list time {
   color: #929dab;
-  font-size: 7px;
+  font-size: 10px;
   text-align: right;
 }
 
@@ -3060,7 +3060,7 @@ textarea:focus {
   border-radius: 8px;
   color: #2367c4;
   background: #f1f6ff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -3109,13 +3109,13 @@ textarea:focus {
 
 .user-edit-modal-heading h2 {
   margin: 4px 0 2px;
-  font-size: 18px;
+  font-size: 21px;
 }
 
 .user-edit-modal-heading p {
   margin: 0;
   color: #7d899a;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .user-edit-modal-heading > button {
@@ -3129,7 +3129,7 @@ textarea:focus {
   border-radius: 50%;
   color: #617087;
   background: #f6f8fb;
-  font-size: 21px;
+  font-size: 24px;
   cursor: pointer;
 }
 
@@ -3153,13 +3153,13 @@ textarea:focus {
 
 .user-edit-modal form > label > span {
   color: #33435a;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .user-edit-modal form > label > small {
   color: #8994a5;
-  font-size: 7px;
+  font-size: 10px;
 }
 
 .user-edit-modal input,
@@ -3168,7 +3168,7 @@ textarea:focus {
   min-height: 42px;
   padding: 0 11px;
   border-radius: 9px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .user-edit-password-note,
@@ -3183,7 +3183,7 @@ textarea:focus {
   border-radius: 8px;
   color: #64758c;
   background: #f2f6fb;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
@@ -3210,7 +3210,7 @@ textarea:focus {
   min-height: 180px;
   place-items: center;
   color: #8793a5;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .profile-error-page {
@@ -3226,14 +3226,14 @@ textarea:focus {
 
 .profile-error-page h1 {
   margin: 20px 0 6px;
-  font-size: 23px;
+  font-size: 26px;
 }
 
 .profile-error-page p {
   max-width: 520px;
   margin: 0;
   color: #7b8798;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
@@ -3358,12 +3358,12 @@ textarea:focus {
     height: 40px;
     color: white;
     background: var(--navy);
-    font-size: 13px;
+    font-size: 16px;
     box-shadow: none;
   }
 
   .login-mobile-logo strong {
-    font-size: 17px;
+    font-size: 20px;
   }
 
   .sidebar {
@@ -3391,7 +3391,7 @@ textarea:focus {
     border-radius: 8px;
     color: #68778d;
     background: #f1f4f8;
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 800;
   }
 
@@ -3418,17 +3418,17 @@ textarea:focus {
     border: 0;
     color: white;
     background: var(--navy);
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .topbar h1 {
-    font-size: 21px;
+    font-size: 24px;
   }
 
   .topbar .primary-button {
     min-height: 40px;
     padding: 0 12px;
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .welcome-card {
@@ -3441,11 +3441,11 @@ textarea:focus {
   }
 
   .welcome-card h2 {
-    font-size: 31px;
+    font-size: 34px;
   }
 
   .welcome-card p {
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .hero-art {
@@ -3811,7 +3811,7 @@ textarea:focus {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 14px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 900;
 }
 
@@ -3827,20 +3827,20 @@ textarea:focus {
   grid-column: 1 / -1;
   margin-bottom: 2px;
   color: #64748b;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .um-summary-card strong {
   color: #10213a;
-  font-size: 29px;
+  font-size: 32px;
   line-height: 1;
 }
 
 .um-summary-card > div > span {
   padding-bottom: 2px;
   color: #94a0b2;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .um-summary-blue .um-summary-icon {
@@ -3894,7 +3894,7 @@ textarea:focus {
 .um-directory-header h2 {
   margin: 2px 0 1px;
   color: #10213a;
-  font-size: 18px;
+  font-size: 21px;
   line-height: 1.35;
 }
 
@@ -3903,7 +3903,7 @@ textarea:focus {
 .um-directory-header p {
   margin: 0;
   color: #7b899e;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -3916,7 +3916,7 @@ textarea:focus {
   border-radius: 13px;
   color: #2868c4;
   background: #eaf3ff;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -3940,7 +3940,7 @@ textarea:focus {
 
 .um-field > span {
   color: #36465e;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -3950,7 +3950,7 @@ textarea:focus {
 
 .um-field > small {
   color: #8895a8;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-field input,
@@ -3964,7 +3964,7 @@ textarea:focus {
   color: #26374f;
   background: #fff;
   font: inherit;
-  font-size: 12px;
+  font-size: 15px;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -3988,7 +3988,7 @@ textarea:focus {
   border: 0;
   border-radius: 10px;
   font: inherit;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -4038,7 +4038,7 @@ textarea:focus {
   border-radius: 999px;
   color: #35679f;
   background: #f2f7fe;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -4081,13 +4081,13 @@ textarea:focus {
   border-radius: 50%;
   color: #fff;
   background: #4f86d3;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 900;
 }
 
 .um-info-banner p {
   margin: 0;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -4156,7 +4156,7 @@ textarea:focus {
   color: #314158;
   background: transparent;
   font: inherit;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .um-search-box button {
@@ -4168,7 +4168,7 @@ textarea:focus {
   border-radius: 50%;
   color: #7b899b;
   background: #e8edf4;
-  font-size: 15px;
+  font-size: 18px;
   cursor: pointer;
 }
 
@@ -4193,14 +4193,14 @@ textarea:focus {
   border-radius: 50%;
   color: #fff;
   background: #2b9b73;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .um-action-success p {
   flex: 1;
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -4208,7 +4208,7 @@ textarea:focus {
   border: 0;
   color: #4f7d6e;
   background: transparent;
-  font-size: 17px;
+  font-size: 20px;
   cursor: pointer;
 }
 
@@ -4225,7 +4225,7 @@ textarea:focus {
   padding: 0 24px;
   color: #8491a3;
   background: #f8fafc;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -4266,7 +4266,7 @@ textarea:focus {
   border-radius: 13px;
   color: #1f64c5;
   background: #e5efff;
-  font-size: 14px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -4289,13 +4289,13 @@ textarea:focus {
 
 .um-user-identity strong {
   color: #17283f;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .um-user-identity small {
   margin-top: 1px;
   color: #7c899b;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-user-identity .um-user-phone {
@@ -4311,7 +4311,7 @@ textarea:focus {
 .um-user-department span,
 .um-user-row time span {
   color: #53647a;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .um-role-badge {
@@ -4320,7 +4320,7 @@ textarea:focus {
   align-items: center;
   padding: 0 9px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -4336,7 +4336,7 @@ textarea:focus {
 
 .um-user-row time {
   color: #8794a6;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-row-action {
@@ -4354,7 +4354,7 @@ textarea:focus {
   color: #2366bd;
   background: #f3f7fe;
   font: inherit;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
@@ -4378,7 +4378,7 @@ textarea:focus {
 
 .um-row-action > span {
   color: #a0a9b6;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-list-state {
@@ -4399,18 +4399,18 @@ textarea:focus {
   border-radius: 14px;
   color: #5a7da9;
   background: #eef4fb;
-  font-size: 20px;
+  font-size: 23px;
 }
 
 .um-list-state h3 {
   margin: 11px 0 3px;
   color: #40516a;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .um-list-state p {
   margin: 0;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .um-dialog-backdrop {
@@ -4457,7 +4457,7 @@ textarea:focus {
   border-radius: 15px;
   color: #fff;
   background: linear-gradient(135deg, #246bc9, #438ce9);
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 900;
   box-shadow: 0 9px 20px #246bc92b;
 }
@@ -4468,7 +4468,7 @@ textarea:focus {
 
 .um-dialog-header > div:nth-child(2) > span {
   color: #6c86a8;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
 }
@@ -4476,14 +4476,14 @@ textarea:focus {
 .um-dialog-header h2 {
   margin: 1px 0;
   color: #10213a;
-  font-size: 20px;
+  font-size: 23px;
 }
 
 .um-dialog-header p {
   margin: 0;
   overflow: hidden;
   color: #718198;
-  font-size: 10px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4499,7 +4499,7 @@ textarea:focus {
   color: #53657d;
   background: #fff;
   font: inherit;
-  font-size: 22px;
+  font-size: 25px;
   cursor: pointer;
 }
 
@@ -4538,12 +4538,12 @@ textarea:focus {
 
 .um-dialog-section-title strong {
   color: #25374f;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .um-dialog-section-title span {
   color: #8b97a7;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-password-panel {
@@ -4570,12 +4570,12 @@ textarea:focus {
 
 .um-password-toggle strong {
   color: #35465d;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .um-password-toggle small {
   color: #8794a5;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .um-password-toggle input {
@@ -4649,13 +4649,13 @@ textarea:focus {
   border-radius: 50%;
   color: #fff;
   background: #cf5263;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 900;
 }
 
 .um-dialog-error p {
   margin: 1px 0 0;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -4674,7 +4674,7 @@ textarea:focus {
   max-width: 300px;
   margin: 0;
   color: #8290a3;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
@@ -4795,15 +4795,15 @@ textarea:focus {
     width: 36px;
     height: 36px;
     border-radius: 11px;
-    font-size: 11px;
+    font-size: 14px;
   }
 
   .um-summary-card small {
-    font-size: 9px;
+    font-size: 12px;
   }
 
   .um-summary-card strong {
-    font-size: 24px;
+    font-size: 27px;
   }
 
   .um-summary-card > div > span {
@@ -4838,7 +4838,7 @@ textarea:focus {
     display: block;
     margin-bottom: 2px;
     color: #98a3b2;
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .um-dialog-backdrop {
@@ -4863,7 +4863,7 @@ textarea:focus {
   }
 
   .um-dialog-header h2 {
-    font-size: 17px;
+    font-size: 20px;
   }
 
   .um-dialog-form {
@@ -4964,7 +4964,7 @@ textarea:focus {
   border-radius: 999px;
   color: white;
   background: #e64757;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
 }
@@ -5000,7 +5000,7 @@ textarea:focus {
 
 .notification-panel > header span {
   color: #4771aa;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.13em;
 }
@@ -5008,14 +5008,14 @@ textarea:focus {
 .notification-panel > header h2 {
   margin: 3px 0 1px;
   color: #172d4e;
-  font-size: 20px;
+  font-size: 23px;
   line-height: 1.35;
 }
 
 .notification-panel > header p {
   margin: 0;
   color: #7a8799;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .notification-panel > header button {
@@ -5025,7 +5025,7 @@ textarea:focus {
   border-radius: 10px;
   color: #2364bb;
   background: #f3f7fd;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
@@ -5092,7 +5092,7 @@ textarea:focus {
 .notification-list strong {
   overflow: hidden;
   color: #233a5d;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5103,7 +5103,7 @@ textarea:focus {
   margin: 3px 0 5px;
   overflow: hidden;
   color: #64738a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -5111,7 +5111,7 @@ textarea:focus {
 
 .notification-list time {
   color: #9aa5b4;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .notification-list > button > i {
@@ -5170,20 +5170,20 @@ textarea:focus {
   border-radius: 14px;
   color: #2870d4;
   background: #ebf3ff;
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 900;
 }
 
 .notification-state h3 {
   margin: 10px 0 2px;
   color: #31435d;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .notification-state p,
 .notification-state small {
   margin: 0;
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .notification-error-state > span {
@@ -5230,18 +5230,18 @@ textarea:focus {
 
 .notification-toast strong {
   color: #223b60;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .notification-toast small {
   margin-top: 2px;
   color: #728096;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .notification-toast > i {
   color: #2a6fcf;
-  font-size: 8px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 900;
 }
