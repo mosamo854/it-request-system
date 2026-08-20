@@ -3,9 +3,15 @@ import { createDepartment } from "../services/departmentService";
 import {
   createManagedUser,
   getProfiles,
+  updateManagedUser,
 } from "../services/profileService";
 import type { Department } from "../types/department";
-import type { CreateManagedUserInput, UserProfile } from "../types/profile";
+import type {
+  CreateManagedUserInput,
+  UpdateManagedUserInput,
+  UserProfile,
+} from "../types/profile";
+import EditUserDialog from "./EditUserDialog";
 
 interface UserManagementPageProps {
   currentProfile: UserProfile;
@@ -53,6 +59,10 @@ export default function UserManagementPage({
   const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
   const [departmentError, setDepartmentError] = useState("");
   const [departmentSuccess, setDepartmentSuccess] = useState("");
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
 
   async function loadUsers() {
     setIsLoading(true);
@@ -136,6 +146,36 @@ export default function UserManagementPage({
     }
   }
 
+  function openEditUser(user: UserProfile) {
+    if (user.role !== "user") return;
+    setEditError("");
+    setEditSuccess("");
+    setEditingUser(user);
+  }
+
+  function closeEditUser() {
+    if (isUpdatingUser) return;
+    setEditingUser(null);
+    setEditError("");
+  }
+
+  async function handleUpdateUser(input: UpdateManagedUserInput) {
+    setEditError("");
+    setEditSuccess("");
+
+    setIsUpdatingUser(true);
+    try {
+      await updateManagedUser(input);
+      await loadUsers();
+      setEditingUser(null);
+      setEditSuccess(`บันทึกข้อมูล ${input.fullName.trim()} สำเร็จแล้ว`);
+    } catch (error) {
+      setEditError(getErrorMessage(error));
+    } finally {
+      setIsUpdatingUser(false);
+    }
+  }
+
   const normalUsers = users.filter((user) => user.role === "user").length;
   const admins = users.filter((user) => user.role === "admin").length;
   const userDepartments = departments.filter(
@@ -149,26 +189,42 @@ export default function UserManagementPage({
         <div>
           <span className="eyebrow">User Administration</span>
           <h1>จัดการผู้ใช้งาน</h1>
-          <p>สร้างบัญชีให้พนักงานแต่ละแผนก โดยไม่เปิดหน้า Register สาธารณะ</p>
+          <p>สร้างบัญชี แก้ไขข้อมูล และจัดกลุ่มพนักงานตามแผนก</p>
         </div>
         <span className="admin-role-pill">ผู้ดูแล: {currentProfile.fullName}</span>
       </header>
 
-      <section className="user-summary-grid">
-        <article><small>บัญชีทั้งหมด</small><strong>{users.length}</strong><span>บัญชี</span></article>
-        <article><small>ผู้ใช้งานทั่วไป</small><strong>{normalUsers}</strong><span>บัญชี</span></article>
-        <article><small>ผู้ดูแลฝ่าย IT</small><strong>{admins}</strong><span>บัญชี</span></article>
-        <article><small>แผนกทั้งหมด</small><strong>{departments.length}</strong><span>แผนก</span></article>
+      <section className="um-summary-grid" aria-label="สรุปบัญชีผู้ใช้งาน">
+        <article className="um-summary-card um-summary-blue">
+          <span className="um-summary-icon" aria-hidden="true">#</span>
+          <div><small>บัญชีทั้งหมด</small><strong>{users.length}</strong><span>บัญชีในระบบ</span></div>
+        </article>
+        <article className="um-summary-card um-summary-green">
+          <span className="um-summary-icon" aria-hidden="true">U</span>
+          <div><small>ผู้ใช้งานทั่วไป</small><strong>{normalUsers}</strong><span>บัญชี User</span></div>
+        </article>
+        <article className="um-summary-card um-summary-purple">
+          <span className="um-summary-icon" aria-hidden="true">IT</span>
+          <div><small>ผู้ดูแลฝ่าย IT</small><strong>{admins}</strong><span>บัญชี Admin</span></div>
+        </article>
+        <article className="um-summary-card um-summary-orange">
+          <span className="um-summary-icon" aria-hidden="true">D</span>
+          <div><small>แผนกทั้งหมด</small><strong>{departments.length}</strong><span>แผนกในระบบ</span></div>
+        </article>
       </section>
 
-      <section className="department-management-card">
-        <div>
-          <span className="eyebrow">Department directory</span>
-          <h2>จัดการแผนก</h2>
-          <p>แผนกที่เพิ่มใหม่จะปรากฏในฟอร์มสร้าง User และตัวกรองคำขอทันที</p>
-        </div>
-        <form onSubmit={handleCreateDepartment}>
-          <label>
+      <section className="um-department-card">
+        <header>
+          <div className="um-section-icon" aria-hidden="true">D</div>
+          <div>
+            <span className="eyebrow">Department directory</span>
+            <h2>จัดการแผนก</h2>
+            <p>แผนกใหม่จะพร้อมใช้งานในฟอร์มสร้างและแก้ไขผู้ใช้ทันที</p>
+          </div>
+        </header>
+
+        <form className="um-department-form" onSubmit={handleCreateDepartment}>
+          <label className="um-field">
             <span>ชื่อแผนกใหม่</span>
             <input
               value={departmentName}
@@ -179,46 +235,48 @@ export default function UserManagementPage({
               maxLength={80}
             />
           </label>
-          <button className="primary-button" disabled={isCreatingDepartment}>
-            {isCreatingDepartment ? "กำลังเพิ่ม…" : "＋ เพิ่มแผนก"}
+          <button className="um-button um-button-primary" disabled={isCreatingDepartment}>
+            {isCreatingDepartment ? "กำลังเพิ่ม…" : "+ เพิ่มแผนก"}
           </button>
         </form>
-        <div className="department-chip-list" aria-label="รายชื่อแผนก">
+
+        <div className="um-department-list" aria-label="รายชื่อแผนก">
           {departments.map((department) => (
             <span key={department.id}>{department.name}</span>
           ))}
         </div>
-        {departmentError && (
-          <p className="notice error-notice">{departmentError}</p>
-        )}
-        {departmentSuccess && (
-          <p className="notice success-notice">{departmentSuccess}</p>
-        )}
+
+        {departmentError && <p className="notice error-notice">{departmentError}</p>}
+        {departmentSuccess && <p className="notice success-notice">{departmentSuccess}</p>}
       </section>
 
-      <section className="user-management-layout">
-        <article className="user-form-card">
-          <div className="analytics-card-heading">
+      <section className="um-management-layout">
+        <article className="um-create-card">
+          <header className="um-card-header">
+            <div className="um-section-icon um-section-icon-green" aria-hidden="true">+</div>
             <div>
               <span className="eyebrow">Create account</span>
               <h2>เพิ่มผู้ใช้ใหม่</h2>
+              <p>สร้างบัญชี User สำหรับพนักงาน</p>
             </div>
-          </div>
-          <p className="user-form-note">
-            บัญชีที่สร้างจะเป็นสิทธิ์ User และยืนยันอีเมลให้อัตโนมัติ
-          </p>
+          </header>
 
-          <form onSubmit={handleCreateUser}>
-            <label>
-              <span>ชื่อ–นามสกุล *</span>
-              <input name="fullName" required minLength={2} maxLength={120} />
+          <div className="um-info-banner">
+            <span aria-hidden="true">i</span>
+            <p>ระบบจะยืนยันอีเมลให้อัตโนมัติ และผู้ใช้สามารถ Login ได้ทันที</p>
+          </div>
+
+          <form className="um-create-form" onSubmit={handleCreateUser}>
+            <label className="um-field">
+              <span>ชื่อ–นามสกุล <b>*</b></span>
+              <input name="fullName" placeholder="ชื่อผู้ใช้งาน" required minLength={2} maxLength={120} />
             </label>
-            <label>
-              <span>อีเมล *</span>
-              <input name="email" type="email" required />
+            <label className="um-field">
+              <span>อีเมล <b>*</b></span>
+              <input name="email" type="email" placeholder="name@company.com" required />
             </label>
-            <label>
-              <span>เบอร์โทร *</span>
+            <label className="um-field">
+              <span>เบอร์โทร <b>*</b></span>
               <input
                 name="phone"
                 type="tel"
@@ -230,8 +288,8 @@ export default function UserManagementPage({
               />
               <small>รองรับ 0812345678 หรือ +66812345678</small>
             </label>
-            <label>
-              <span>แผนก *</span>
+            <label className="um-field">
+              <span>แผนก <b>*</b></span>
               <select name="department" required defaultValue="">
                 <option value="" disabled>เลือกแผนก</option>
                 {userDepartments.map((department) => (
@@ -241,69 +299,140 @@ export default function UserManagementPage({
                 ))}
               </select>
             </label>
-            <label>
-              <span>รหัสผ่านเริ่มต้น *</span>
-              <input name="password" type="password" required minLength={8} />
+            <label className="um-field">
+              <span>รหัสผ่านเริ่มต้น <b>*</b></span>
+              <input name="password" type="password" required minLength={8} autoComplete="new-password" />
             </label>
-            <label>
-              <span>ยืนยันรหัสผ่าน *</span>
-              <input name="confirmPassword" type="password" required minLength={8} />
+            <label className="um-field">
+              <span>ยืนยันรหัสผ่าน <b>*</b></span>
+              <input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" />
             </label>
 
             {errorMessage && <p className="notice error-notice">{errorMessage}</p>}
             {successMessage && <p className="notice success-notice">{successMessage}</p>}
 
             <button
-              className="primary-button create-user-button"
+              className="um-button um-button-primary um-create-button"
               disabled={isCreating || userDepartments.length === 0}
             >
-              {isCreating ? "กำลังสร้างบัญชี…" : "＋ สร้างบัญชี User"}
+              {isCreating ? "กำลังสร้างบัญชี…" : "+ สร้างบัญชี User"}
             </button>
           </form>
         </article>
 
-        <article className="user-list-card">
-          <div className="user-list-heading">
+        <article className="um-directory-card">
+          <header className="um-directory-header">
             <div>
-              <span className="eyebrow">Directory</span>
+              <span className="eyebrow">User directory</span>
               <h2>รายชื่อผู้ใช้งาน</h2>
+              <p>พบ {filteredUsers.length} จาก {users.length} บัญชี</p>
             </div>
-            <label className="search-box">
-              <span>⌕</span>
+            <label className="um-search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m16.5 16.5 4 4" />
+              </svg>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="ค้นหาชื่อ อีเมล เบอร์โทร หรือแผนก"
               />
+              {query && (
+                <button type="button" onClick={() => setQuery("")} aria-label="ล้างคำค้นหา">×</button>
+              )}
             </label>
+          </header>
+
+          {editSuccess && (
+            <div className="um-action-success" role="status">
+              <span aria-hidden="true">✓</span>
+              <p>{editSuccess}</p>
+              <button type="button" onClick={() => setEditSuccess("")} aria-label="ปิดข้อความ">×</button>
+            </div>
+          )}
+
+          <div className="um-table-head" aria-hidden="true">
+            <span>ผู้ใช้งาน</span>
+            <span>แผนก</span>
+            <span>สิทธิ์</span>
+            <span>วันที่สร้าง</span>
+            <span>จัดการ</span>
           </div>
 
-          <div className="user-list">
+          <div className="um-user-list">
             {filteredUsers.map((user) => (
-              <article key={user.id}>
-                <span className={`avatar ${user.role === "admin" ? "admin-avatar" : ""}`}>
-                  {user.fullName.charAt(0)}
-                </span>
-                <span>
-                  <strong>{user.fullName}</strong>
-                  <small>{user.email}</small>
-                  <small className="user-phone">☎ {formatPhone(user.phone)}</small>
-                </span>
-                <span className="user-department">{user.department ?? "ยังไม่ระบุแผนก"}</span>
-                <span className={`role-badge role-${user.role}`}>
-                  {user.role === "admin" ? "Admin · IT" : "User"}
-                </span>
-                <time>{formatDate(user.createdAt)}</time>
+              <article className="um-user-row" key={user.id}>
+                <div className="um-user-identity">
+                  <span className={`um-avatar ${user.role === "admin" ? "um-avatar-admin" : ""}`}>
+                    {user.fullName.trim().charAt(0).toUpperCase() || "U"}
+                  </span>
+                  <div>
+                    <strong>{user.fullName}</strong>
+                    <small>{user.email}</small>
+                    <small className="um-user-phone">โทร {formatPhone(user.phone)}</small>
+                  </div>
+                </div>
+
+                <div className="um-user-department">
+                  <small>แผนก</small>
+                  <span>{user.department ?? "ยังไม่ระบุแผนก"}</span>
+                </div>
+
+                <div>
+                  <span className={`um-role-badge um-role-${user.role}`}>
+                    {user.role === "admin" ? "Admin · IT" : "User"}
+                  </span>
+                </div>
+
+                <time dateTime={user.createdAt}>
+                  <small>วันที่สร้าง</small>
+                  <span>{formatDate(user.createdAt)}</span>
+                </time>
+
+                <div className="um-row-action">
+                  {user.role === "user" ? (
+                    <button type="button" onClick={() => openEditUser(user)}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+                        <path d="m13.5 6.5 4 4" />
+                      </svg>
+                      แก้ไข
+                    </button>
+                  ) : (
+                    <span title="บัญชี Admin แก้ไขจากหน้านี้ไม่ได้">บัญชีหลัก</span>
+                  )}
+                </div>
               </article>
             ))}
 
-            {isLoading && <div className="user-list-loading">กำลังโหลดผู้ใช้งาน…</div>}
+            {isLoading && (
+              <div className="um-list-state">
+                <i className="um-button-spinner" aria-hidden="true" />
+                <p>กำลังโหลดผู้ใช้งาน…</p>
+              </div>
+            )}
             {!isLoading && filteredUsers.length === 0 && (
-              <div className="empty-state"><h3>ไม่พบผู้ใช้งาน</h3></div>
+              <div className="um-list-state">
+                <span aria-hidden="true">⌕</span>
+                <h3>ไม่พบผู้ใช้งาน</h3>
+                <p>ลองค้นหาด้วยชื่อ อีเมล หรือชื่อแผนกอื่น</p>
+              </div>
             )}
           </div>
         </article>
       </section>
+
+      {editingUser && (
+        <EditUserDialog
+          key={editingUser.id}
+          user={editingUser}
+          departments={userDepartments}
+          isSaving={isUpdatingUser}
+          errorMessage={editError}
+          onClose={closeEditUser}
+          onSubmit={handleUpdateUser}
+        />
+      )}
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import type {
   CreateManagedUserInput,
+  UpdateManagedUserInput,
   UserProfile,
   UserRole,
 } from "../types/profile";
@@ -48,23 +49,36 @@ export async function getProfiles(): Promise<UserProfile[]> {
   return (data as ProfileRow[]).map(mapProfile);
 }
 
-async function getFunctionErrorMessage(error: unknown) {
+async function getFunctionErrorMessage(error: unknown, functionName: string) {
   if (
     typeof error === "object" &&
     error !== null &&
     "context" in error &&
     error.context instanceof Response
   ) {
+    const response = error.context;
     try {
-      const body = (await error.context.json()) as { error?: string };
+      const body = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
       if (body.error) return body.error;
+      if (response.status === 404) {
+        return `ยังไม่ได้ Deploy Edge Function ${functionName} กรุณา Deploy แล้วลองอีกครั้ง`;
+      }
+      if (body.message) return body.message;
     } catch {
       // Fall through to the standard error message.
     }
+
+    if (response.status === 404) {
+      return `ยังไม่ได้ Deploy Edge Function ${functionName} กรุณา Deploy แล้วลองอีกครั้ง`;
+    }
+
   }
 
   if (error instanceof Error) return error.message;
-  return "สร้างผู้ใช้ไม่สำเร็จ";
+  return "ดำเนินการไม่สำเร็จ";
 }
 
 export async function createManagedUser(input: CreateManagedUserInput) {
@@ -72,6 +86,15 @@ export async function createManagedUser(input: CreateManagedUserInput) {
     body: input,
   });
 
-  if (error) throw new Error(await getFunctionErrorMessage(error));
+  if (error) throw new Error(await getFunctionErrorMessage(error, "create-user"));
+  if (data?.error) throw new Error(String(data.error));
+}
+
+export async function updateManagedUser(input: UpdateManagedUserInput) {
+  const { data, error } = await supabase.functions.invoke("update-user", {
+    body: input,
+  });
+
+  if (error) throw new Error(await getFunctionErrorMessage(error, "update-user"));
   if (data?.error) throw new Error(String(data.error));
 }

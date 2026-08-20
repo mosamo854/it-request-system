@@ -8,13 +8,16 @@
 
 - Login ด้วย Supabase Auth (Email/Password)
 - แยกสิทธิ์ `admin` (ฝ่าย IT) และ `user` (พนักงานแต่ละแผนก)
-- Admin สร้างบัญชี User จากหน้าเว็บผ่าน Supabase Edge Function
+- Admin สร้างและแก้ไขบัญชี User จากหน้าเว็บผ่าน Supabase Edge Function
+- Admin แก้ชื่อ อีเมล เบอร์โทร แผนก และตั้งรหัสผ่านใหม่ให้ User ได้
 - Admin เพิ่มแผนกใหม่ได้จากหน้าจัดการผู้ใช้
 - การสร้าง User ต้องระบุเบอร์โทร โดยระบบเก็บเป็นรูปแบบ `+66...`
 - User ไม่มีหน้า Register และสมัครบัญชีเองไม่ได้
 - Admin เห็นทุกคำขอ เปลี่ยนสถานะ ตอบแชต เก็บสำรอง ลบถาวร และดูสถิติได้
 - User เห็นเฉพาะคำขอของตัวเอง ส่งคำขอ แชต และดูสถานะได้ แต่เปลี่ยนสถานะไม่ได้
 - ห้องแชตแยกตามคำขอ พร้อมรับข้อความใหม่แบบ Realtime
+- ศูนย์แจ้งเตือนในเว็บแบบ Realtime พร้อมจำนวนที่ยังไม่อ่านและปุ่มอ่านทั้งหมด
+- Admin ได้รับแจ้งเตือนเมื่อมีคำขอหรือข้อความใหม่ ส่วน User ได้รับแจ้งเตือนเมื่อสถานะเปลี่ยนหรือฝ่าย IT ตอบแชต
 - แนบรูปภาพได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 5 MB ต่อรูป)
 - ลบได้เฉพาะคำขอที่เสร็จสิ้น โดยใช้ Soft Delete และเก็บไว้ในคลังสำรอง
 - เปิดดูแชต กู้คืน หรือลบคำขอจากคลังสำรองถาวรได้
@@ -42,6 +45,19 @@
 เบอร์โทรของบัญชีเดิมจะเป็นค่าว่างได้ แต่การสร้าง User ใหม่จากหน้า Admin จะบังคับกรอกเบอร์ไทย เช่น `0812345678` หรือ `+66812345678` และบันทึกเป็นรูปแบบ `+66...`
 
 รูปภาพรองรับไฟล์ JPG, PNG, WEBP และ GIF ขนาดไม่เกิน 5 MB ไฟล์จะอยู่ใน bucket แบบ private และหน้าเว็บจะสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่ Login แล้ว
+
+### 1.1 เปิดใช้ศูนย์แจ้งเตือนในเว็บ
+
+หลัง Run `schema.sql` แล้ว ให้เปิด `supabase/setup_notifications.sql` คัดลอกโค้ดทั้งหมดไป Run ใน **SQL Editor** อีกหนึ่งครั้ง ไฟล์นี้จะสร้างตารางแจ้งเตือน, Trigger, Realtime และ RLS โดยไม่ส่งข้อมูลออกไปยัง Email หรือ LINE
+
+ระบบจะสร้างแจ้งเตือนให้อัตโนมัติในกรณีต่อไปนี้:
+
+- User ส่งคำขอใหม่ → แจ้ง Admin ทุกคน
+- Admin เปลี่ยนสถานะคำขอ → แจ้ง User เจ้าของคำขอ
+- User ส่งข้อความหรือรูปในแชต → แจ้ง Admin ทุกคน
+- Admin ตอบข้อความหรือส่งรูปในแชต → แจ้ง User เจ้าของคำขอ
+
+ผู้ใช้แต่ละคนอ่านได้เฉพาะแจ้งเตือนของตัวเองผ่าน RLS และการกดแจ้งเตือนจะเปิดคำขอพร้อมห้องแชตที่เกี่ยวข้อง
 
 ### ถ้าเคยพบ error `it_requests_requester_email_check`
 
@@ -72,6 +88,7 @@
 npx supabase login
 npx supabase link --project-ref qhdwztrzljhkjmacfrkn
 npx supabase functions deploy create-user
+npx supabase functions deploy update-user
 ```
 
 สร้างรหัสลับแบบสุ่มด้วยคำสั่งนี้ แล้วคัดลอกค่าที่แสดงไว้:
@@ -89,12 +106,13 @@ npx supabase functions deploy purge-backups --no-verify-jwt
 
 ต้องใช้ `--no-verify-jwt` เพื่อให้ Cron เรียกฟังก์ชันด้วย Cleanup Secret ได้ ตัวฟังก์ชันยังตรวจความปลอดภัยเองทุกครั้ง: การลบจากหน้าเว็บต้องเป็นบัญชี `admin` ส่วนการลบอัตโนมัติต้องส่ง Cleanup Secret ที่ตรงกัน
 
-Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างบัญชี User และใช้ปุ่ม **ลบถาวรทันที** ในคลังสำรองได้
+Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างและแก้ไขบัญชี User และใช้ปุ่ม **ลบถาวรทันที** ในคลังสำรองได้ หากเปลี่ยนอีเมล ผู้ใช้ต้องใช้อีเมลใหม่ในการ Login ครั้งถัดไป ส่วนช่องรหัสผ่านใหม่สามารถเว้นว่างได้เมื่อต้องการเก็บรหัสผ่านเดิม
 
-หากอัปเดตจากเวอร์ชันก่อนที่ยังไม่มีแผนกแบบไดนามิกและเบอร์โทร ต้อง Run `schema.sql` รุ่นล่าสุดก่อน แล้ว Deploy `create-user` ใหม่:
+หากอัปเดตจากเวอร์ชันก่อนที่ยังไม่มีแผนกแบบไดนามิกและเบอร์โทร ต้อง Run `schema.sql` รุ่นล่าสุดก่อน แล้ว Deploy ฟังก์ชันจัดการผู้ใช้ใหม่:
 
 ```bash
 npx supabase functions deploy create-user
+npx supabase functions deploy update-user
 ```
 
 ## 4. ตั้งเวลาลบ Backup อัตโนมัติ 7 วัน
@@ -155,16 +173,20 @@ src/
 ├─ components/ArchivePage.tsx # คลังสำรองและการกู้คืนคำขอ
 ├─ components/AttachmentImage.tsx # โหลดรูปส่วนตัวด้วย signed URL
 ├─ components/ChatDrawer.tsx # ห้องแชตของแต่ละคำขอ
+├─ components/EditUserDialog.tsx # Modal แก้ไข User ผ่าน React Portal
 ├─ components/LoginPage.tsx  # หน้า Login ไม่มี Register
+├─ components/NotificationCenter.tsx # กระดิ่ง รายการ และ Toast แจ้งเตือน
 ├─ components/StatisticsPage.tsx # สถิติรายวัน/เดือน/ปีและกราฟแนวโน้ม
-├─ components/UserManagementPage.tsx # Admin สร้างและดูรายชื่อ User
+├─ components/UserManagementPage.tsx # Admin สร้าง แก้ไข และดูรายชื่อ User
 ├─ lib/supabase.ts           # Supabase client และ Auth client
 ├─ services/departmentService.ts # โหลดและเพิ่มแผนก
 ├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
+├─ services/notificationService.ts # โหลด อ่าน และ subscribe แจ้งเตือน
 ├─ services/profileService.ts # Profile, role และเรียก Edge Function
 ├─ services/ticketService.ts # คำสั่ง select/insert/update
 ├─ types/message.ts          # TypeScript type ของข้อความ
+├─ types/notification.ts     # TypeScript type ของการแจ้งเตือน
 ├─ types/department.ts       # TypeScript type ของแผนก
 ├─ types/profile.ts          # TypeScript type ของ Admin/User
 ├─ types/ticket.ts           # TypeScript types
@@ -173,9 +195,11 @@ src/
 └─ main.tsx
 supabase/
 ├─ functions/create-user/index.ts # สร้าง Auth User ฝั่ง Server
+├─ functions/update-user/index.ts # แก้ Profile/Auth User ฝั่ง Server
 ├─ functions/purge-backups/index.ts # Admin ลบถาวรและ Cron ลบ Backup ครบ 7 วัน
 ├─ promote_admin.sql         # ตั้งค่า Admin ฝ่าย IT คนแรก
 ├─ setup_backup_cleanup.sql  # Vault + Cron เรียกลบ Backup ทุกชั่วโมง
+├─ setup_notifications.sql   # ตาราง Trigger Realtime และ RLS แจ้งเตือน
 └─ schema.sql                # Profiles, ตาราง, role และ RLS
 ```
 
@@ -186,13 +210,15 @@ supabase/
 | ดูคำขอ | ทุกคน | เฉพาะของตัวเอง |
 | ส่งคำขอ | — | ได้ |
 | แชต | ทุกคำขอ | เฉพาะของตัวเอง |
+| รับและอ่านแจ้งเตือน | ของ Admin เอง | ของ User เอง |
 | เปลี่ยนสถานะ | ได้ | ไม่ได้ |
 | เก็บสำรอง/กู้คืน | ได้ | ไม่ได้ |
 | ลบ Backup ถาวร | ได้ | ไม่ได้ |
 | ดูสถิติ | ได้ | ไม่ได้ |
 | สร้างบัญชี User | ได้ | ไม่ได้ |
+| แก้ไขบัญชี User | ได้ | ไม่ได้ |
 | เพิ่มแผนก | ได้ | ไม่ได้ |
 
-การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Functions การสร้าง User ใช้ `auth.admin.createUser()` เฉพาะฝั่ง Server ส่วนการลบถาวรใช้ Service Role เฉพาะใน `purge-backups` และตรวจ role หรือ Cleanup Secret ก่อนทุกครั้ง
+การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Functions การสร้าง User ใช้ `auth.admin.createUser()` และการแก้ User ใช้ `auth.admin.updateUserById()` เฉพาะฝั่ง Server โดย `update-user` ตรวจว่าผู้เรียกเป็น Admin และเป้าหมายเป็น role `user` ทุกครั้ง บัญชี Admin จึงแก้จากหน้าจอนี้ไม่ได้ ส่วนการลบถาวรใช้ Service Role เฉพาะใน `purge-backups` และตรวจ role หรือ Cleanup Secret ก่อนทุกครั้ง
 
 เมื่อคำขอถูกลบถาวรแล้ว ข้อมูลคำขอ แชต รูปภาพ และข้อมูลของรายการนั้นในหน้าสถิติจะไม่สามารถกู้คืนได้

@@ -4,6 +4,7 @@ import ArchivePage from "./components/ArchivePage";
 import AttachmentImage from "./components/AttachmentImage";
 import ChatDrawer from "./components/ChatDrawer";
 import LoginPage from "./components/LoginPage";
+import NotificationCenter from "./components/NotificationCenter";
 import StatisticsPage from "./components/StatisticsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import { supabase } from "./lib/supabase";
@@ -419,6 +420,33 @@ function App() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  async function handleOpenNotificationRequest(requestId: string) {
+    setActiveView("dashboard");
+    setPageError("");
+
+    try {
+      const refreshedTickets = await getTickets();
+      setTickets(refreshedTickets);
+      const targetTicket = refreshedTickets.find(
+        (ticket) => ticket.id === requestId,
+      );
+
+      if (targetTicket) {
+        setActiveChatTicket(targetTicket);
+      } else {
+        setPageError("ไม่พบคำขอนี้ หรือคำขอถูกลบออกจากระบบแล้ว");
+      }
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    }
+
+    window.setTimeout(() => {
+      document
+        .getElementById("requests")
+        ?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
   }
 
   async function handleSignOut() {
@@ -1125,6 +1153,13 @@ function App() {
           onClose={() => setActiveChatTicket(null)}
         />
       )}
+
+      <NotificationCenter
+        userId={profile.id}
+        onOpenRequest={(requestId) =>
+          void handleOpenNotificationRequest(requestId)
+        }
+      />
     </main>
   );
 }
