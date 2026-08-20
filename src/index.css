@@ -2572,9 +2572,9 @@ textarea:focus {
   gap: 12px;
   margin: 0 auto 15px;
   padding: 14px 16px;
-  border: 1px solid #cde9de;
+  border: 1px solid #f0d6ad;
   border-radius: 12px;
-  background: #effbf6;
+  background: #fff8ec;
 }
 
 .archive-info > span {
@@ -2585,7 +2585,7 @@ textarea:focus {
   place-items: center;
   border-radius: 50%;
   color: white;
-  background: #1aa776;
+  background: #e79a25;
   font-weight: 900;
 }
 
@@ -2595,7 +2595,7 @@ textarea:focus {
 
 .archive-info p {
   margin: 2px 0 0;
-  color: #6f837a;
+  color: #85735b;
   font-size: 8px;
 }
 
@@ -2649,6 +2649,11 @@ textarea:focus {
   font-weight: 800;
 }
 
+.archive-badge.expired {
+  color: #b43434;
+  background: #fff0f0;
+}
+
 .archive-card h2 {
   margin: 8px 0 5px;
   font-size: 14px;
@@ -2663,7 +2668,7 @@ textarea:focus {
 
 .archive-meta {
   display: grid;
-  grid-template-columns: repeat(4, minmax(100px, 1fr));
+  grid-template-columns: repeat(5, minmax(100px, 1fr));
   gap: 12px;
   margin-top: 15px;
   padding: 12px;
@@ -2713,6 +2718,27 @@ textarea:focus {
 }
 
 .restore-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.permanent-delete-button {
+  min-height: 35px;
+  border: 1px solid #f0c4c4;
+  border-radius: 8px;
+  color: #b52d2d;
+  background: #fff3f3;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.permanent-delete-button:hover {
+  border-color: #df9090;
+  background: #ffe7e7;
+}
+
+.permanent-delete-button:disabled {
   opacity: 0.6;
   cursor: wait;
 }

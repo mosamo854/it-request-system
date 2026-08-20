@@ -8,12 +8,13 @@
 - แยกสิทธิ์ `admin` (ฝ่าย IT) และ `user` (พนักงานแต่ละแผนก)
 - Admin สร้างบัญชี User จากหน้าเว็บผ่าน Supabase Edge Function
 - User ไม่มีหน้า Register และสมัครบัญชีเองไม่ได้
-- Admin เห็นทุกคำขอ เปลี่ยนสถานะ ตอบแชต เก็บสำรอง และดูสถิติได้
+- Admin เห็นทุกคำขอ เปลี่ยนสถานะ ตอบแชต เก็บสำรอง ลบถาวร และดูสถิติได้
 - User เห็นเฉพาะคำขอของตัวเอง ส่งคำขอ แชต และดูสถานะได้ แต่เปลี่ยนสถานะไม่ได้
 - ห้องแชตแยกตามคำขอ พร้อมรับข้อความใหม่แบบ Realtime
 - แนบรูปภาพได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 5 MB ต่อรูป)
 - ลบได้เฉพาะคำขอที่เสร็จสิ้น โดยใช้ Soft Delete และเก็บไว้ในคลังสำรอง
-- เปิดดูแชตและกู้คืนคำขอจากคลังสำรองได้
+- เปิดดูแชต กู้คืน หรือลบคำขอจากคลังสำรองถาวรได้
+- ระบบเก็บ Backup ไว้ 7 วัน แล้วลบคำขอ แชต และรูปภาพถาวรอัตโนมัติ
 - หน้าสถิติรายวัน 7 วัน, รายเดือน 12 เดือน และรายปี 5 ปี พร้อมกราฟแนวโน้ม
 - ส่งคำขอใหม่ไปยังฝ่าย IT
 - แสดงคำขอทั้งหมดและสรุปจำนวนตามสถานะ
@@ -55,23 +56,48 @@
 
 ห้ามแจกสิทธิ์ Admin ให้บัญชีพนักงานทั่วไป
 
-## 3. Deploy Edge Function สำหรับสร้าง User
+## 3. Deploy Edge Functions
 
-การสร้างบัญชี Auth ต้องใช้ `service_role` จึงทำผ่าน Edge Function ฝั่ง Server เท่านั้น ห้ามใส่ `service_role` ใน React หรือ Vercel
+การสร้างบัญชี Auth และการลบไฟล์ใน Backup ใช้ `service_role` จึงทำผ่าน Edge Function ฝั่ง Server เท่านั้น ห้ามใส่ `service_role` ใน React หรือ Vercel
 
 เปิด Terminal ที่โฟลเดอร์โปรเจกต์แล้วรัน:
 
 ```bash
 npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase link --project-ref qhdwztrzljhkjmacfrkn
 npx supabase functions deploy create-user
 ```
 
-หา `YOUR_PROJECT_REF` ได้จาก URL ของ Supabase Project หรือ Project Settings
+สร้างรหัสลับแบบสุ่มด้วยคำสั่งนี้ แล้วคัดลอกค่าที่แสดงไว้:
 
-Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างบัญชี User ได้
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-## 4. ตั้งค่า Environment Variables
+นำค่าที่ได้มาแทน `PASTE_RANDOM_SECRET_HERE` แล้วรัน:
+
+```bash
+npx supabase secrets set BACKUP_CLEANUP_SECRET=PASTE_RANDOM_SECRET_HERE
+npx supabase functions deploy purge-backups --no-verify-jwt
+```
+
+ต้องใช้ `--no-verify-jwt` เพื่อให้ Cron เรียกฟังก์ชันด้วย Cleanup Secret ได้ ตัวฟังก์ชันยังตรวจความปลอดภัยเองทุกครั้ง: การลบจากหน้าเว็บต้องเป็นบัญชี `admin` ส่วนการลบอัตโนมัติต้องส่ง Cleanup Secret ที่ตรงกัน
+
+Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างบัญชี User และใช้ปุ่ม **ลบถาวรทันที** ในคลังสำรองได้
+
+## 4. ตั้งเวลาลบ Backup อัตโนมัติ 7 วัน
+
+1. เปิด `supabase/setup_backup_cleanup.sql`
+2. เปลี่ยน `YOUR_PUBLISHABLE_OR_ANON_KEY` เป็น Publishable key หรือ anon key จาก Supabase Dashboard > **Project Settings > API**
+3. เปลี่ยน `YOUR_BACKUP_CLEANUP_SECRET` เป็นรหัสสุ่มค่าเดียวกับที่ใช้ในข้อ 3
+4. คัดลอก SQL ทั้งไฟล์ไป Run ใน Supabase Dashboard > **SQL Editor**
+5. ผลลัพธ์ด้านล่างต้องแสดง `purge-it-request-backups-hourly` และ `active = true`
+
+ไฟล์นี้เปิด `pg_cron` และ `pg_net`, เก็บค่าที่ใช้เรียกฟังก์ชันไว้ใน Supabase Vault และเรียก `purge-backups` ทุกชั่วโมงในนาทีที่ 5 ฟังก์ชันจะลบเฉพาะรายการที่มี `archived_at` ครบ 7 วันแล้ว โดยลบรูปผ่าน Storage API ก่อน แล้วจึงลบคำขอและแชตจากฐานข้อมูล
+
+หาก Run ไฟล์นี้ซ้ำ ระบบจะอัปเดตค่าใน Vault และแทนที่ Cron Job เดิม ไม่สร้าง Job ซ้ำ
+
+## 5. ตั้งค่า Environment Variables
 
 คัดลอกไฟล์ตัวอย่าง:
 
@@ -94,7 +120,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 ห้ามนำ `service_role` key มาใส่ใน React เพราะเป็น secret key
 
-## 5. ติดตั้งและรัน
+## 6. ติดตั้งและรัน
 
 ```bash
 npm install
@@ -133,7 +159,9 @@ src/
 └─ main.tsx
 supabase/
 ├─ functions/create-user/index.ts # สร้าง Auth User ฝั่ง Server
+├─ functions/purge-backups/index.ts # Admin ลบถาวรและ Cron ลบ Backup ครบ 7 วัน
 ├─ promote_admin.sql         # ตั้งค่า Admin ฝ่าย IT คนแรก
+├─ setup_backup_cleanup.sql  # Vault + Cron เรียกลบ Backup ทุกชั่วโมง
 └─ schema.sql                # Profiles, ตาราง, role และ RLS
 ```
 
@@ -146,7 +174,10 @@ supabase/
 | แชต | ทุกคำขอ | เฉพาะของตัวเอง |
 | เปลี่ยนสถานะ | ได้ | ไม่ได้ |
 | เก็บสำรอง/กู้คืน | ได้ | ไม่ได้ |
+| ลบ Backup ถาวร | ได้ | ไม่ได้ |
 | ดูสถิติ | ได้ | ไม่ได้ |
 | สร้างบัญชี User | ได้ | ไม่ได้ |
 
-การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Function การสร้าง User ใช้ `auth.admin.createUser()` เฉพาะฝั่ง Server และตรวจ role ของผู้เรียกก่อนทุกครั้ง
+การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Functions การสร้าง User ใช้ `auth.admin.createUser()` เฉพาะฝั่ง Server ส่วนการลบถาวรใช้ Service Role เฉพาะใน `purge-backups` และตรวจ role หรือ Cleanup Secret ก่อนทุกครั้ง
+
+เมื่อคำขอถูกลบถาวรแล้ว ข้อมูลคำขอ แชต รูปภาพ และข้อมูลของรายการนั้นในหน้าสถิติจะไม่สามารถกู้คืนได้

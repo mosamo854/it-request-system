@@ -134,3 +134,37 @@ export async function restoreTicket(id: string): Promise<Ticket> {
   if (!data) throw new Error("ไม่พบคำขอในคลังสำรอง");
   return mapTicket(data as TicketRow);
 }
+
+async function getFunctionErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "context" in error &&
+    error.context instanceof Response
+  ) {
+    try {
+      const body = (await error.context.json()) as { error?: string };
+      if (body.error) return body.error;
+    } catch {
+      // Fall through to the standard error message.
+    }
+  }
+
+  if (error instanceof Error) return error.message;
+  return "ลบข้อมูลสำรองถาวรไม่สำเร็จ";
+}
+
+export async function permanentlyDeleteTicket(id: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("purge-backups", {
+    body: { requestId: id },
+  });
+
+  if (error) throw new Error(await getFunctionErrorMessage(error));
+  if (data?.error) throw new Error(String(data.error));
+  if (
+    !Array.isArray(data?.deletedRequestIds) ||
+    !data.deletedRequestIds.includes(id)
+  ) {
+    throw new Error("ไม่พบคำขอในคลังสำรอง หรือคำขอถูกลบไปแล้ว");
+  }
+}

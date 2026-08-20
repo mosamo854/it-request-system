@@ -1,0 +1,194 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const IMAGE_BUCKET = "it-request-images";
+const BACKUP_RETENTION_DAYS = 7;
+const MAX_REQUESTS_PER_RUN = 100;
+const MAX_STORAGE_DELETE_BATCH = 1000;
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-cleanup-secret",
+};
+
+interface RequestRow {
+  id: string;
+  code: string;
+  image_path: string | null;
+  archived_at: string | null;
+}
+
+interface MessageImageRow {
+  image_path: string | null;
+}
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(value);
+}
+
+Deno.serve(async (request: Request) => {
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed" }, 405);
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const cleanupSecret = Deno.env.get("BACKUP_CLEANUP_SECRET");
+
+    if (!supabaseUrl || !anonKey || !serviceRoleKey || !cleanupSecret) {
+      return jsonResponse({ error: "ตั้งค่า Edge Function ไม่ครบ" }, 500);
+    }
+
+    const payload = await request.json().catch(() => ({})) as {
+      requestId?: unknown;
+    };
+    const requestId = typeof payload.requestId === "string"
+      ? payload.requestId.trim()
+      : "";
+    const isScheduledCall =
+      request.headers.get("x-cleanup-secret") === cleanupSecret;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    if (!isScheduledCall) {
+      const authorization = request.headers.get("Authorization");
+      if (!authorization) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      const callerClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authorization } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const token = authorization.replace(/^Bearer\s+/i, "");
+      const {
+        data: { user: caller },
+        error: callerError,
+      } = await callerClient.auth.getUser(token);
+
+      if (callerError || !caller) {
+        return jsonResponse({ error: "กรุณาเข้าสู่ระบบใหม่" }, 401);
+      }
+
+      const { data: callerProfile, error: profileLookupError } =
+        await adminClient
+          .from("profiles")
+          .select("role")
+          .eq("id", caller.id)
+          .single();
+
+      if (profileLookupError || callerProfile?.role !== "admin") {
+        return jsonResponse({ error: "เฉพาะผู้ดูแลฝ่าย IT เท่านั้น" }, 403);
+      }
+
+      if (!requestId) {
+        return jsonResponse({ error: "กรุณาระบุคำขอที่ต้องการลบ" }, 400);
+      }
+    }
+
+    if (requestId && !isUuid(requestId)) {
+      return jsonResponse({ error: "รหัสคำขอไม่ถูกต้อง" }, 400);
+    }
+
+    const cutoff = new Date(
+      Date.now() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    let requestQuery = adminClient
+      .from("it_requests")
+      .select("id, code, image_path, archived_at")
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: true })
+      .limit(MAX_REQUESTS_PER_RUN);
+
+    requestQuery = requestId
+      ? requestQuery.eq("id", requestId)
+      : requestQuery.lte("archived_at", cutoff);
+
+    const { data: requestRows, error: requestLookupError } = await requestQuery;
+    if (requestLookupError) throw requestLookupError;
+
+    const requests = (requestRows ?? []) as RequestRow[];
+    if (requestId && requests.length === 0) {
+      return jsonResponse(
+        { error: "ไม่พบคำขอในคลังสำรอง หรือคำขอถูกลบไปแล้ว" },
+        404,
+      );
+    }
+
+    if (requests.length === 0) {
+      return jsonResponse({
+        mode: isScheduledCall ? "scheduled" : "manual",
+        deletedCount: 0,
+        deletedRequestIds: [],
+        hasMore: false,
+      });
+    }
+
+    const requestIds = requests.map((item) => item.id);
+    const { data: messageRows, error: messageLookupError } = await adminClient
+      .from("it_request_messages")
+      .select("image_path")
+      .in("request_id", requestIds)
+      .not("image_path", "is", null);
+
+    if (messageLookupError) throw messageLookupError;
+
+    const imagePaths = Array.from(
+      new Set(
+        [
+          ...requests.map((item) => item.image_path),
+          ...((messageRows ?? []) as MessageImageRow[]).map(
+            (item) => item.image_path,
+          ),
+        ].filter((path): path is string => Boolean(path)),
+      ),
+    );
+
+    for (
+      let index = 0;
+      index < imagePaths.length;
+      index += MAX_STORAGE_DELETE_BATCH
+    ) {
+      const batch = imagePaths.slice(index, index + MAX_STORAGE_DELETE_BATCH);
+      const { error: storageDeleteError } = await adminClient.storage
+        .from(IMAGE_BUCKET)
+        .remove(batch);
+
+      if (storageDeleteError) throw storageDeleteError;
+    }
+
+    const { error: requestDeleteError } = await adminClient
+      .from("it_requests")
+      .delete()
+      .in("id", requestIds);
+
+    if (requestDeleteError) throw requestDeleteError;
+
+    return jsonResponse({
+      mode: isScheduledCall ? "scheduled" : "manual",
+      deletedCount: requestIds.length,
+      deletedRequestIds: requestIds,
+      hasMore: !requestId && requestIds.length === MAX_REQUESTS_PER_RUN,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาด";
+    return jsonResponse({ error: message }, 500);
+  }
+});

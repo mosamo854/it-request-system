@@ -13,6 +13,7 @@ import {
   archiveTicket,
   createTicket,
   getTickets,
+  permanentlyDeleteTicket,
   restoreTicket,
   updateTicketStatus,
 } from "./services/ticketService";
@@ -110,6 +111,7 @@ function App() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activeChatTicket, setActiveChatTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
@@ -388,6 +390,29 @@ function App() {
       setPageError(getErrorMessage(error));
     } finally {
       setRestoringId(null);
+    }
+  }
+
+  async function handlePermanentDelete(id: string) {
+    if (!isAdmin) return;
+    const ticket = tickets.find((item) => item.id === id);
+    if (!ticket?.archivedAt) return;
+
+    const confirmed = window.confirm(
+      `ลบ ${ticket.code} ถาวรหรือไม่?\n\nคำขอ แชต และรูปภาพทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้`,
+    );
+    if (!confirmed) return;
+
+    setPageError("");
+    setDeletingId(id);
+    try {
+      await permanentlyDeleteTicket(id);
+      setTickets((current) => current.filter((item) => item.id !== id));
+      setActiveChatTicket((current) => (current?.id === id ? null : current));
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -874,7 +899,9 @@ function App() {
           isLoading={isLoading}
           errorMessage={pageError}
           restoringId={restoringId}
+          deletingId={deletingId}
           onRestore={(id) => void handleRestore(id)}
+          onDelete={(id) => void handlePermanentDelete(id)}
           onOpenChat={setActiveChatTicket}
         />
       )}
