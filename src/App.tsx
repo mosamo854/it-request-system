@@ -5,8 +5,10 @@ import AttachmentImage from "./components/AttachmentImage";
 import ChatDrawer from "./components/ChatDrawer";
 import LoginPage from "./components/LoginPage";
 import StatisticsPage from "./components/StatisticsPage";
+import UserManagementPage from "./components/UserManagementPage";
 import { supabase } from "./lib/supabase";
 import { validateImage } from "./services/imageService";
+import { getCurrentProfile } from "./services/profileService";
 import {
   archiveTicket,
   createTicket,
@@ -20,8 +22,9 @@ import type {
   TicketPriority,
   TicketStatus,
 } from "./types/ticket";
+import type { UserProfile } from "./types/profile";
 
-type AppView = "dashboard" | "statistics" | "archive";
+type AppView = "dashboard" | "statistics" | "archive" | "users";
 
 const departments = [
   "ทุกแผนก",
@@ -90,6 +93,7 @@ function getErrorMessage(error: unknown) {
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [activeView, setActiveView] = useState<AppView>("dashboard");
@@ -125,6 +129,10 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      if (!nextSession) {
+        setProfile(null);
+        setActiveView("dashboard");
+      }
       setIsAuthLoading(false);
     });
 
@@ -137,34 +145,47 @@ function App() {
   useEffect(() => {
     if (!session) {
       setTickets([]);
+      setProfile(null);
       setIsLoading(false);
       return;
     }
 
     let isMounted = true;
+    const sessionUserId = session.user.id;
 
-    async function loadTickets() {
+    async function loadAppData() {
       setIsLoading(true);
       setPageError("");
       try {
-        const data = await getTickets();
-        if (isMounted) setTickets(data);
+        const [profileData, ticketData] = await Promise.all([
+          getCurrentProfile(sessionUserId),
+          getTickets(),
+        ]);
+        if (isMounted) {
+          setProfile(profileData);
+          setTickets(ticketData);
+        }
       } catch (error) {
-        if (isMounted) setPageError(getErrorMessage(error));
+        if (isMounted) {
+          setProfile(null);
+          setPageError(getErrorMessage(error));
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
     }
 
-    void loadTickets();
+    void loadAppData();
     return () => {
       isMounted = false;
     };
   }, [session]);
 
+  const isAdmin = profile?.role === "admin";
+
   const activeTickets = useMemo(
-    () => tickets.filter((ticket) => !ticket.archivedAt),
-    [tickets],
+    () => (isAdmin ? tickets.filter((ticket) => !ticket.archivedAt) : tickets),
+    [isAdmin, tickets],
   );
 
   const archivedTickets = useMemo(
@@ -210,6 +231,7 @@ function App() {
   );
 
   function showView(view: AppView, targetId?: string) {
+    if (view !== "dashboard" && !isAdmin) return;
     setActiveView(view);
     window.setTimeout(() => {
       if (targetId) {
@@ -221,6 +243,7 @@ function App() {
   }
 
   function openRequestForm() {
+    if (isAdmin) return;
     setSubmittedCode("");
     setFormError("");
     setIsFormOpen(true);
@@ -259,10 +282,16 @@ function App() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
 
+    if (!profile || profile.role !== "user" || !profile.department) {
+      setFormError("บัญชีนี้ยังไม่มีข้อมูลแผนก หรือไม่มีสิทธิ์ส่งคำขอ");
+      return;
+    }
+
     const input: CreateTicketInput = {
-      requesterName: String(form.get("requesterName") ?? ""),
-      requesterEmail: String(form.get("requesterEmail") ?? ""),
-      department: String(form.get("department") ?? ""),
+      requesterUserId: profile.id,
+      requesterName: profile.fullName,
+      requesterEmail: profile.email,
+      department: profile.department,
       category: String(form.get("category") ?? ""),
       priority: String(form.get("priority") ?? "normal") as TicketPriority,
       subject: String(form.get("subject") ?? ""),
@@ -292,6 +321,7 @@ function App() {
   }
 
   async function handleStatusChange(id: string, nextStatus: TicketStatus) {
+    if (!isAdmin) return;
     const previousStatus = tickets.find((ticket) => ticket.id === id)?.status;
     setPageError("");
     setUpdatingId(id);
@@ -321,6 +351,7 @@ function App() {
   }
 
   async function handleArchive(id: string) {
+    if (!isAdmin) return;
     const ticket = tickets.find((item) => item.id === id);
     if (!ticket || ticket.status !== "done") return;
 
@@ -332,7 +363,7 @@ function App() {
     setPageError("");
     setArchivingId(id);
     try {
-      const updated = await archiveTicket(id, session?.user.id ?? "");
+      const updated = await archiveTicket(id, profile.id);
       setTickets((current) =>
         current.map((item) => (item.id === id ? updated : item)),
       );
@@ -345,6 +376,7 @@ function App() {
   }
 
   async function handleRestore(id: string) {
+    if (!isAdmin) return;
     setPageError("");
     setRestoringId(id);
     try {
@@ -362,6 +394,8 @@ function App() {
   async function handleSignOut() {
     setPageError("");
     setActiveChatTicket(null);
+    setProfile(null);
+    setActiveView("dashboard");
     const { error } = await supabase.auth.signOut();
     if (error) setPageError(getErrorMessage(error));
   }
@@ -377,6 +411,29 @@ function App() {
   }
 
   if (!session) return <LoginPage />;
+
+  if (isLoading && !profile) {
+    return (
+      <main className="auth-loading">
+        <span className="brand-mark">IT</span>
+        <div className="loading-spinner" />
+        <p>กำลังโหลดสิทธิ์ผู้ใช้งาน…</p>
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <main className="profile-error-page">
+        <span className="brand-mark">IT</span>
+        <h1>ไม่พบข้อมูลสิทธิ์ผู้ใช้งาน</h1>
+        <p>{pageError || "กรุณา Run schema.sql และตั้งค่า Admin ก่อนใช้งาน"}</p>
+        <button className="primary-button" onClick={() => void handleSignOut()}>
+          ออกจากระบบ
+        </button>
+      </main>
+    );
+  }
 
   const userEmail = session.user.email ?? "ผู้ใช้งาน";
 
@@ -407,20 +464,30 @@ function App() {
             <span>⌂</span> ภาพรวม
           </button>
           <button onClick={() => showView("dashboard", "requests")}>
-            <span>≡</span> คำขอทั้งหมด <b>{counts.all}</b>
+            <span>≡</span> {isAdmin ? "คำขอทั้งหมด" : "คำขอของฉัน"} <b>{counts.all}</b>
           </button>
-          <button
-            className={activeView === "statistics" ? "active" : ""}
-            onClick={() => showView("statistics")}
-          >
-            <span>⌁</span> สถิติ
-          </button>
-          <button
-            className={activeView === "archive" ? "active" : ""}
-            onClick={() => showView("archive")}
-          >
-            <span>▣</span> คลังสำรอง <b>{archivedTickets.length}</b>
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                className={activeView === "statistics" ? "active" : ""}
+                onClick={() => showView("statistics")}
+              >
+                <span>⌁</span> สถิติ
+              </button>
+              <button
+                className={activeView === "archive" ? "active" : ""}
+                onClick={() => showView("archive")}
+              >
+                <span>▣</span> คลังสำรอง <b>{archivedTickets.length}</b>
+              </button>
+              <button
+                className={activeView === "users" ? "active" : ""}
+                onClick={() => showView("users")}
+              >
+                <span>♙</span> จัดการผู้ใช้
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="sidebar-help">
@@ -436,8 +503,8 @@ function App() {
         <div className="profile-mini">
           <span className="avatar">{userEmail.charAt(0).toUpperCase()}</span>
           <span>
-            <strong>{userEmail.split("@")[0]}</strong>
-            <small>{userEmail}</small>
+            <strong title={userEmail}>{profile.fullName}</strong>
+            <small>{isAdmin ? "Admin · ฝ่าย IT" : profile.department}</small>
           </span>
           <button
             className="logout-button"
@@ -456,18 +523,28 @@ function App() {
         >
           ภาพรวม
         </button>
-        <button
-          className={activeView === "statistics" ? "active" : ""}
-          onClick={() => showView("statistics")}
-        >
-          สถิติ
-        </button>
-        <button
-          className={activeView === "archive" ? "active" : ""}
-          onClick={() => showView("archive")}
-        >
-          สำรอง ({archivedTickets.length})
-        </button>
+        {isAdmin && (
+          <>
+            <button
+              className={activeView === "statistics" ? "active" : ""}
+              onClick={() => showView("statistics")}
+            >
+              สถิติ
+            </button>
+            <button
+              className={activeView === "archive" ? "active" : ""}
+              onClick={() => showView("archive")}
+            >
+              สำรอง ({archivedTickets.length})
+            </button>
+            <button
+              className={activeView === "users" ? "active" : ""}
+              onClick={() => showView("users")}
+            >
+              ผู้ใช้
+            </button>
+          </>
+        )}
       </nav>
 
       {activeView === "dashboard" && (
@@ -476,11 +553,17 @@ function App() {
           <div className="mobile-brand">IT</div>
           <div>
             <span className="eyebrow">IT Service Management</span>
-            <h1>ศูนย์รับแจ้งปัญหา IT</h1>
+            <h1>{isAdmin ? "ศูนย์จัดการคำขอ IT" : "คำขอ IT ของฉัน"}</h1>
           </div>
-          <button className="primary-button" onClick={openRequestForm}>
-            <span>＋</span> ส่งคำขอใหม่
-          </button>
+          {isAdmin ? (
+            <button className="primary-button" onClick={() => showView("users")}>
+              <span>＋</span> เพิ่มผู้ใช้
+            </button>
+          ) : (
+            <button className="primary-button" onClick={openRequestForm}>
+              <span>＋</span> ส่งคำขอใหม่
+            </button>
+          )}
         </header>
 
         <section className="welcome-card">
@@ -489,17 +572,24 @@ function App() {
               <i /> IT Support พร้อมให้บริการ
             </span>
             <h2>
-              มีปัญหาเรื่องไอที
+              {isAdmin ? "คำขอจากทุกแผนก" : "มีปัญหาเรื่องไอที"}
               <br />
-              แจ้งเราได้เลย
+              {isAdmin ? "จัดการได้ในที่เดียว" : "แจ้งเราได้เลย"}
             </h2>
             <p>
-              ส่งรายละเอียดปัญหา ติดตามสถานะ
-              และรับการช่วยเหลือจากทีม IT ได้ในที่เดียว
+              {isAdmin
+                ? "เปลี่ยนสถานะ ตอบแชต เก็บคำขอ และติดตามสถิติของทีม IT"
+                : "ส่งรายละเอียดปัญหา ติดตามสถานะ และแชตกับทีม IT ได้ในที่เดียว"}
             </p>
-            <button className="light-button" onClick={openRequestForm}>
-              เริ่มส่งคำขอ <span>→</span>
-            </button>
+            {isAdmin ? (
+              <button className="light-button" onClick={() => showView("statistics")}>
+                ดูสถิติ <span>→</span>
+              </button>
+            ) : (
+              <button className="light-button" onClick={openRequestForm}>
+                เริ่มส่งคำขอ <span>→</span>
+              </button>
+            )}
           </div>
 
           <div className="hero-art" aria-hidden="true">
@@ -526,7 +616,7 @@ function App() {
           >
             <span className="stat-icon all-icon">≡</span>
             <span>
-              <small>คำขอทั้งหมด</small>
+              <small>{isAdmin ? "คำขอทั้งหมด" : "คำขอของฉัน"}</small>
               <strong>{counts.all}</strong>
             </span>
             <i>ดูทั้งหมด →</i>
@@ -568,12 +658,12 @@ function App() {
           </button>
         </section>
 
-        <section className="workspace-grid">
+        <section className={isAdmin ? "workspace-grid" : "workspace-grid user-workspace"}>
           <div className="request-panel" id="requests">
             <div className="section-heading">
               <div>
                 <span className="eyebrow">รายการล่าสุด</span>
-                <h2>คำขอของทุกแผนก</h2>
+                <h2>{isAdmin ? "คำขอของทุกแผนก" : "รายการคำขอของฉัน"}</h2>
               </div>
               <span className="result-count">
                 {isLoading ? "กำลังโหลด…" : `${filteredTickets.length} รายการ`}
@@ -605,7 +695,7 @@ function App() {
               </select>
             </div>
 
-            <div className="department-tabs" aria-label="กรองตามแผนก">
+            {isAdmin && <div className="department-tabs" aria-label="กรองตามแผนก">
               {departments.map((department) => (
                 <button
                   key={department}
@@ -615,7 +705,7 @@ function App() {
                   {department}
                 </button>
               ))}
-            </div>
+            </div>}
 
             <div className="ticket-list">
               {filteredTickets.map((ticket) => (
@@ -631,6 +721,9 @@ function App() {
                       >
                         <i /> {statusMeta[ticket.status].label}
                       </span>
+                      {!isAdmin && ticket.archivedAt && (
+                        <span className="history-badge">เก็บเป็นประวัติแล้ว</span>
+                      )}
                     </div>
                     <h3>{ticket.subject}</h3>
                     <p>{ticket.detail}</p>
@@ -659,7 +752,7 @@ function App() {
                     </div>
                   </div>
                   <div className="ticket-action">
-                    <label>
+                    {isAdmin && <label>
                       <span>
                         {updatingId === ticket.id
                           ? "กำลังบันทึก…"
@@ -679,14 +772,14 @@ function App() {
                         <option value="in_progress">กำลังดำเนินการ</option>
                         <option value="done">เสร็จสิ้น</option>
                       </select>
-                    </label>
+                    </label>}
                     <button
                       className="chat-button"
                       onClick={() => setActiveChatTicket(ticket)}
                     >
                       <span>•••</span> เปิดแชต
                     </button>
-                    {ticket.status === "done" && (
+                    {isAdmin && ticket.status === "done" && (
                       <button
                         className="archive-ticket-button"
                         disabled={archivingId === ticket.id}
@@ -711,7 +804,7 @@ function App() {
             </div>
           </div>
 
-          <aside className="department-panel" id="departments">
+          {isAdmin && <aside className="department-panel" id="departments">
             <div className="section-heading">
               <div>
                 <span className="eyebrow">ภาพรวม</span>
@@ -762,12 +855,12 @@ function App() {
                 <p>เฉลี่ย 2 ชม. 18 นาที</p>
               </div>
             </div>
-          </aside>
+          </aside>}
         </section>
       </section>
       )}
 
-      {activeView === "statistics" && (
+      {isAdmin && activeView === "statistics" && (
         <StatisticsPage
           tickets={tickets}
           isLoading={isLoading}
@@ -775,7 +868,7 @@ function App() {
         />
       )}
 
-      {activeView === "archive" && (
+      {isAdmin && activeView === "archive" && (
         <ArchivePage
           tickets={archivedTickets}
           isLoading={isLoading}
@@ -784,6 +877,10 @@ function App() {
           onRestore={(id) => void handleRestore(id)}
           onOpenChat={setActiveChatTicket}
         />
+      )}
+
+      {isAdmin && activeView === "users" && (
+        <UserManagementPage currentProfile={profile} />
       )}
 
       {isFormOpen && (
@@ -836,37 +933,15 @@ function App() {
 
                 <form onSubmit={handleSubmit}>
                   <div className="form-grid">
-                    <label>
-                      <span>ชื่อผู้แจ้ง *</span>
-                      <input
-                        name="requesterName"
-                        required
-                        minLength={2}
-                        maxLength={120}
-                        placeholder="ชื่อ–นามสกุล"
-                      />
-                    </label>
-                    <label>
-                      <span>อีเมล *</span>
-                      <input
-                        name="requesterEmail"
-                        type="email"
-                        required
-                        defaultValue={session.user.email ?? ""}
-                        placeholder="name@company.co.th"
-                      />
-                    </label>
-                    <label>
-                      <span>แผนก *</span>
-                      <select name="department" required defaultValue="">
-                        <option value="" disabled>
-                          เลือกแผนก
-                        </option>
-                        {departments.slice(1).map((department) => (
-                          <option key={department}>{department}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <div className="requester-profile-summary full-width">
+                      <span className="avatar">{profile.fullName.charAt(0)}</span>
+                      <span>
+                        <small>ส่งคำขอในชื่อ</small>
+                        <strong>{profile.fullName}</strong>
+                        <b>{profile.email} · {profile.department ?? "ยังไม่ระบุแผนก"}</b>
+                      </span>
+                      <i>ข้อมูลผู้แจ้งถูกล็อกจากบัญชี Login</i>
+                    </div>
                     <label>
                       <span>ประเภทปัญหา *</span>
                       <select name="category" required defaultValue="">

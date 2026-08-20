@@ -84,7 +84,7 @@ export default function LoginPage() {
           <span className="eyebrow">ยินดีต้อนรับกลับ</span>
           <h2>เข้าสู่ระบบ</h2>
           <p className="login-subtitle">
-            ใช้อีเมลและรหัสผ่านที่ผู้ดูแลระบบสร้างให้
+            ใช้อีเมลและรหัสผ่านที่ผู้ดูแลฝ่าย IT สร้างให้
           </p>
 
           <form className="login-form" onSubmit={handleLogin}>
@@ -144,7 +144,7 @@ export default function LoginPage() {
             <span>i</span>
             <p>
               <strong>ยังไม่มีบัญชี?</strong>
-              ติดต่อผู้ดูแลระบบเพื่อสร้างบัญชีให้จากหลังบ้าน
+              ติดต่อผู้ดูแลฝ่าย IT เพื่อสร้างบัญชีให้ในระบบ
             </p>
           </div>
         </div>

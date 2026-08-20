@@ -5,7 +5,11 @@
 ## ฟีเจอร์
 
 - Login ด้วย Supabase Auth (Email/Password)
-- ไม่มีหน้า Register — ผู้ดูแลสร้างบัญชีจากหลังบ้านเท่านั้น
+- แยกสิทธิ์ `admin` (ฝ่าย IT) และ `user` (พนักงานแต่ละแผนก)
+- Admin สร้างบัญชี User จากหน้าเว็บผ่าน Supabase Edge Function
+- User ไม่มีหน้า Register และสมัครบัญชีเองไม่ได้
+- Admin เห็นทุกคำขอ เปลี่ยนสถานะ ตอบแชต เก็บสำรอง และดูสถิติได้
+- User เห็นเฉพาะคำขอของตัวเอง ส่งคำขอ แชต และดูสถานะได้ แต่เปลี่ยนสถานะไม่ได้
 - ห้องแชตแยกตามคำขอ พร้อมรับข้อความใหม่แบบ Realtime
 - แนบรูปภาพได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 5 MB ต่อรูป)
 - ลบได้เฉพาะคำขอที่เสร็จสิ้น โดยใช้ Soft Delete และเก็บไว้ในคลังสำรอง
@@ -26,9 +30,9 @@
 3. คัดลอกโค้ดทั้งหมดจาก `supabase/schema.sql`
 4. กด **Run**
 
-ไฟล์ SQL จะสร้างตาราง `it_requests`, ตารางแชต `it_request_messages`, คอลัมน์คลังสำรอง `archived_at`/`archived_by`, Storage bucket ส่วนตัว `it-request-images`, indexes, trigger, Realtime, RLS policies และข้อมูลตัวอย่าง โดยอนุญาตให้เฉพาะผู้ที่ Login แล้วเข้าถึงข้อมูลและรูปภาพ
+ไฟล์ SQL จะสร้างตาราง `profiles`, ตาราง `it_requests`, ตารางแชต `it_request_messages`, role, requester ownership, คลังสำรอง, Storage bucket ส่วนตัว, trigger, Realtime และ RLS policies ที่แยกสิทธิ์ Admin/User
 
-หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้งเพื่อเพิ่มคอลัมน์รูปภาพ คลังสำรอง สร้าง Storage bucket และอัปเดต RLS สคริปต์ออกแบบให้ Run ซ้ำได้โดยไม่ลบคำขอหรือข้อความเดิม
+หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้ง สคริปต์จะสร้าง Profile ให้บัญชี Auth เดิมเป็น role `user` และเชื่อมคำขอเดิมกับบัญชีที่อีเมลตรงกัน โดยไม่ลบคำขอ ข้อความ หรือรูปภาพเดิม
 
 รูปภาพรองรับไฟล์ JPG, PNG, WEBP และ GIF ขนาดไม่เกิน 5 MB ไฟล์จะอยู่ใน bucket แบบ private และหน้าเว็บจะสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่ Login แล้ว
 
@@ -39,18 +43,35 @@
 1. Run `supabase/fix_email_constraint.sql` แล้ว Run `supabase/schema.sql` อีกครั้ง หรือ
 2. Run `supabase/schema.sql` รุ่นล่าสุดทั้งไฟล์ เพราะสคริปต์สามารถซ่อม constraint เดิมให้อัตโนมัติ
 
-## 2. เปิดระบบ Login และสร้างผู้ใช้จากหลังบ้าน
+## 2. ตั้งค่า Admin ฝ่าย IT คนแรก
 
 1. เปิด Supabase Dashboard > **Authentication > Providers** และตรวจสอบว่า Email/Password เปิดใช้งานอยู่
-2. หากต้องการป้องกันการสมัครผ่าน API ด้วย ให้ปิดตัวเลือก **Allow new users to sign up** ของ Email provider
-3. ไปที่ **Authentication > Users**
-4. กด **Add user / Create new user**
-5. กรอกอีเมลและรหัสผ่าน แล้วเลือกสร้างผู้ใช้โดยยืนยันอีเมลให้เรียบร้อย
-6. ส่งอีเมลและรหัสผ่านให้ผู้ใช้ผ่านช่องทางภายในที่ปลอดภัย
+2. ปิด **Allow new users to sign up** เพื่อไม่ให้บุคคลทั่วไปสมัครเอง
+3. ไปที่ **Authentication > Users** และสร้างบัญชีสำหรับผู้ดูแลฝ่าย IT หนึ่งบัญชี หากมีบัญชีเดิมอยู่แล้วใช้บัญชีนั้นได้
+4. เปิดไฟล์ `supabase/promote_admin.sql`
+5. เปลี่ยน `YOUR_IT_ADMIN_EMAIL@company.co.th` เป็นอีเมลของผู้ดูแลจริง
+6. Run ไฟล์ใน SQL Editor
+7. ตรวจผลลัพธ์ด้านล่าง ต้องแสดง `role = admin` และ `department = ฝ่าย IT`
 
-เว็บไซต์ไม่มีปุ่มหรือหน้า Register ผู้ใช้ใหม่จึงต้องถูกสร้างโดยผู้ดูแลจาก Supabase Dashboard เท่านั้น
+ห้ามแจกสิทธิ์ Admin ให้บัญชีพนักงานทั่วไป
 
-## 3. ตั้งค่า Environment Variables
+## 3. Deploy Edge Function สำหรับสร้าง User
+
+การสร้างบัญชี Auth ต้องใช้ `service_role` จึงทำผ่าน Edge Function ฝั่ง Server เท่านั้น ห้ามใส่ `service_role` ใน React หรือ Vercel
+
+เปิด Terminal ที่โฟลเดอร์โปรเจกต์แล้วรัน:
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy create-user
+```
+
+หา `YOUR_PROJECT_REF` ได้จาก URL ของ Supabase Project หรือ Project Settings
+
+Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างบัญชี User ได้
+
+## 4. ตั้งค่า Environment Variables
 
 คัดลอกไฟล์ตัวอย่าง:
 
@@ -73,7 +94,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 
 ห้ามนำ `service_role` key มาใส่ใน React เพราะเป็น secret key
 
-## 4. ติดตั้งและรัน
+## 5. ติดตั้งและรัน
 
 ```bash
 npm install
@@ -98,19 +119,34 @@ src/
 ├─ components/ChatDrawer.tsx # ห้องแชตของแต่ละคำขอ
 ├─ components/LoginPage.tsx  # หน้า Login ไม่มี Register
 ├─ components/StatisticsPage.tsx # สถิติรายวัน/เดือน/ปีและกราฟแนวโน้ม
+├─ components/UserManagementPage.tsx # Admin สร้างและดูรายชื่อ User
 ├─ lib/supabase.ts           # Supabase client และ Auth client
 ├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
+├─ services/profileService.ts # Profile, role และเรียก Edge Function
 ├─ services/ticketService.ts # คำสั่ง select/insert/update
 ├─ types/message.ts          # TypeScript type ของข้อความ
+├─ types/profile.ts          # TypeScript type ของ Admin/User
 ├─ types/ticket.ts           # TypeScript types
 ├─ App.tsx                   # Session guard, dashboard และ state หลัก
 ├─ index.css                 # Login + Dashboard responsive styles
 └─ main.tsx
 supabase/
-└─ schema.sql                # ตาราง, RLS และข้อมูลตัวอย่าง
+├─ functions/create-user/index.ts # สร้าง Auth User ฝั่ง Server
+├─ promote_admin.sql         # ตั้งค่า Admin ฝ่าย IT คนแรก
+└─ schema.sql                # Profiles, ตาราง, role และ RLS
 ```
 
 ## หมายเหตุด้านสิทธิ์
 
-RLS อนุญาตเฉพาะบัญชีที่ Login แล้วให้อ่าน/สร้างคำขอ แก้คอลัมน์ `status` และข้อมูลคลังสำรอง ส่งข้อความโดยใช้ตัวตนของบัญชีที่ Login และอัปโหลดรูปไว้ในโฟลเดอร์ของบัญชีนั้น ระบบไม่เรียกคำสั่ง DELETE กับคำขอ จึงเก็บข้อมูล แชต และรูปภาพย้อนหลังไว้ หากต้องการแยกสิทธิ์พนักงานทั่วไปกับฝ่าย IT ขั้นถัดไปควรเพิ่มตาราง `profiles` และ role เช่น `employee`, `it_staff`, `admin`
+| ความสามารถ | Admin ฝ่าย IT | User ทั่วไป |
+| --- | --- | --- |
+| ดูคำขอ | ทุกคน | เฉพาะของตัวเอง |
+| ส่งคำขอ | — | ได้ |
+| แชต | ทุกคำขอ | เฉพาะของตัวเอง |
+| เปลี่ยนสถานะ | ได้ | ไม่ได้ |
+| เก็บสำรอง/กู้คืน | ได้ | ไม่ได้ |
+| ดูสถิติ | ได้ | ไม่ได้ |
+| สร้างบัญชี User | ได้ | ไม่ได้ |
+
+การซ่อนปุ่มใน React เป็นเพียงส่วนของ UI ส่วนการบังคับสิทธิ์จริงอยู่ที่ Supabase RLS และ Edge Function การสร้าง User ใช้ `auth.admin.createUser()` เฉพาะฝั่ง Server และตรวจ role ของผู้เรียกก่อนทุกครั้ง

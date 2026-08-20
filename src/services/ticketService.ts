@@ -10,6 +10,7 @@ import { removeImage, uploadImage } from "./imageService";
 interface TicketRow {
   id: string;
   code: string;
+  requester_user_id: string | null;
   requester_name: string;
   requester_email: string;
   department: string;
@@ -29,6 +30,7 @@ function mapTicket(row: TicketRow): Ticket {
   return {
     id: row.id,
     code: row.code,
+    requesterUserId: row.requester_user_id ?? null,
     requesterName: row.requester_name,
     requesterEmail: row.requester_email,
     department: row.department,
@@ -64,6 +66,7 @@ export async function createTicket(
     .from("it_requests")
     .insert({
       requester_name: input.requesterName.trim(),
+      requester_user_id: input.requesterUserId,
       requester_email: input.requesterEmail.trim().toLowerCase(),
       department: input.department,
       category: input.category,

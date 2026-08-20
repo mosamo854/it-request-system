@@ -4,6 +4,7 @@ export type TicketPriority = "urgent" | "normal" | "low";
 export interface Ticket {
   id: string;
   code: string;
+  requesterUserId: string | null;
   requesterName: string;
   requesterEmail: string;
   department: string;
@@ -20,6 +21,7 @@ export interface Ticket {
 }
 
 export interface CreateTicketInput {
+  requesterUserId: string;
   requesterName: string;
   requesterEmail: string;
   department: string;
