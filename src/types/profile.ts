@@ -17,12 +17,3 @@ export interface CreateManagedUserInput {
   department: string;
   phone: string;
 }
-
-export interface UpdateManagedUserInput {
-  userId: string;
-  email: string;
-  password?: string;
-  fullName: string;
-  department: string;
-  phone: string;
-}
