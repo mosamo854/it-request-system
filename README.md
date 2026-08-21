@@ -23,6 +23,8 @@
 - เปิดดูแชต กู้คืน หรือลบคำขอจากคลังสำรองถาวรได้
 - ระบบเก็บ Backup ไว้ 7 วัน แล้วลบคำขอ แชต และรูปภาพถาวรอัตโนมัติ
 - หน้าสถิติรายวัน 7 วัน, รายเดือน 12 เดือน และรายปี 5 ปี พร้อมกราฟแนวโน้ม
+- Export รายงานสถิติเป็นไฟล์ CSV ภาษาไทย พร้อมสรุป รายละเอียดแต่ละช่วง และรายการคำขอ
+- หน้า Audit Trail สำหรับ Admin แสดงประวัติผู้ดำเนินการ เวลา และรายละเอียด พร้อมค้นหา กรอง และ Export CSV
 - ส่งคำขอใหม่ไปยังฝ่าย IT
 - แสดงคำขอทั้งหมดและสรุปจำนวนตามสถานะ
 - ค้นหาด้วยเลขคำขอ หัวข้อ ชื่อผู้แจ้ง หรือแผนก
@@ -58,6 +60,12 @@
 - Admin ตอบข้อความหรือส่งรูปในแชต → แจ้ง User เจ้าของคำขอ
 
 ผู้ใช้แต่ละคนอ่านได้เฉพาะแจ้งเตือนของตัวเองผ่าน RLS และการกดแจ้งเตือนจะเปิดคำขอพร้อมห้องแชตที่เกี่ยวข้อง
+
+### 1.2 เปิดใช้ประวัติการดำเนินการ
+
+เปิด `supabase/setup_activity_logs.sql` คัดลอกโค้ดทั้งหมดไป Run ใน **SQL Editor** หนึ่งครั้ง ไฟล์นี้จะสร้างตาราง `activity_logs`, Trigger, Realtime และ RLS ที่อนุญาตให้เฉพาะ Admin อ่านประวัติได้
+
+ระบบจะเริ่มเก็บประวัติตั้งแต่เวลาที่ Run ไฟล์นี้ โดยบันทึกการสร้างคำขอ เปลี่ยนสถานะ เก็บสำรอง กู้คืน ลบถาวร ลบอัตโนมัติ เพิ่มแผนก สร้างผู้ใช้ และแก้ไขผู้ใช้ ประวัติเก่าก่อนติดตั้งจะไม่สามารถสร้างย้อนหลังได้อย่างถูกต้องจึงไม่นำมาเพิ่มอัตโนมัติ
 
 ### ถ้าเคยพบ error `it_requests_requester_email_check`
 
@@ -108,11 +116,12 @@ npx supabase functions deploy purge-backups --no-verify-jwt
 
 Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SERVICE_ROLE_KEY` ให้ Edge Function โดยอัตโนมัติ เมื่อ Deploy สำเร็จ Admin จะใช้หน้า **จัดการผู้ใช้** เพื่อสร้างและแก้ไขบัญชี User และใช้ปุ่ม **ลบถาวรทันที** ในคลังสำรองได้ หากเปลี่ยนอีเมล ผู้ใช้ต้องใช้อีเมลใหม่ในการ Login ครั้งถัดไป ส่วนช่องรหัสผ่านใหม่สามารถเว้นว่างได้เมื่อต้องการเก็บรหัสผ่านเดิม
 
-หากอัปเดตจากเวอร์ชันก่อนที่ยังไม่มีแผนกแบบไดนามิกและเบอร์โทร ต้อง Run `schema.sql` รุ่นล่าสุดก่อน แล้ว Deploy ฟังก์ชันจัดการผู้ใช้ใหม่:
+หากอัปเดตจากเวอร์ชันก่อน หลัง Run `setup_activity_logs.sql` แล้ว ต้อง Deploy Edge Functions ทั้งสามตัวใหม่เพื่อให้การสร้างผู้ใช้ แก้ไขผู้ใช้ และลบ Backup ถูกบันทึกในประวัติ:
 
 ```bash
 npx supabase functions deploy create-user
 npx supabase functions deploy update-user
+npx supabase functions deploy purge-backups --no-verify-jwt
 ```
 
 ## 4. ตั้งเวลาลบ Backup อัตโนมัติ 7 วัน
@@ -171,6 +180,7 @@ npm run preview
 ```text
 src/
 ├─ components/ArchivePage.tsx # คลังสำรองและการกู้คืนคำขอ
+├─ components/ActivityLogPage.tsx # ประวัติการดำเนินการ ค้นหา กรอง และ Export
 ├─ components/AttachmentImage.tsx # โหลดรูปส่วนตัวด้วย signed URL
 ├─ components/ChatDrawer.tsx # ห้องแชตของแต่ละคำขอ
 ├─ components/EditUserDialog.tsx # Modal แก้ไข User ผ่าน React Portal
@@ -180,14 +190,17 @@ src/
 ├─ components/UserManagementPage.tsx # Admin สร้าง แก้ไข และดูรายชื่อ User
 ├─ lib/supabase.ts           # Supabase client และ Auth client
 ├─ services/departmentService.ts # โหลดและเพิ่มแผนก
+├─ services/activityLogService.ts # โหลดและ subscribe ประวัติ Admin
 ├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
 ├─ services/notificationService.ts # โหลด อ่าน และ subscribe แจ้งเตือน
 ├─ services/profileService.ts # Profile, role และเรียก Edge Function
+├─ services/reportExportService.ts # สร้างและดาวน์โหลด CSV ภาษาไทย
 ├─ services/ticketService.ts # คำสั่ง select/insert/update
 ├─ types/message.ts          # TypeScript type ของข้อความ
 ├─ types/notification.ts     # TypeScript type ของการแจ้งเตือน
 ├─ types/department.ts       # TypeScript type ของแผนก
+├─ types/activityLog.ts      # TypeScript type ของประวัติการดำเนินการ
 ├─ types/profile.ts          # TypeScript type ของ Admin/User
 ├─ types/ticket.ts           # TypeScript types
 ├─ App.tsx                   # Session guard, dashboard และ state หลัก
@@ -199,6 +212,7 @@ supabase/
 ├─ functions/purge-backups/index.ts # Admin ลบถาวรและ Cron ลบ Backup ครบ 7 วัน
 ├─ promote_admin.sql         # ตั้งค่า Admin ฝ่าย IT คนแรก
 ├─ setup_backup_cleanup.sql  # Vault + Cron เรียกลบ Backup ทุกชั่วโมง
+├─ setup_activity_logs.sql   # Audit Trail Trigger Realtime และ RLS
 ├─ setup_notifications.sql   # ตาราง Trigger Realtime และ RLS แจ้งเตือน
 └─ schema.sql                # Profiles, ตาราง, role และ RLS
 ```
@@ -215,6 +229,8 @@ supabase/
 | เก็บสำรอง/กู้คืน | ได้ | ไม่ได้ |
 | ลบ Backup ถาวร | ได้ | ไม่ได้ |
 | ดูสถิติ | ได้ | ไม่ได้ |
+| Export รายงาน | ได้ | ไม่ได้ |
+| ดู/Export ประวัติการดำเนินการ | ได้ | ไม่ได้ |
 | สร้างบัญชี User | ได้ | ไม่ได้ |
 | แก้ไขบัญชี User | ได้ | ไม่ได้ |
 | เพิ่มแผนก | ได้ | ไม่ได้ |

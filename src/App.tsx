@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import ActivityLogPage from "./components/ActivityLogPage";
 import ArchivePage from "./components/ArchivePage";
 import AttachmentImage from "./components/AttachmentImage";
 import ChatDrawer from "./components/ChatDrawer";
@@ -28,7 +29,7 @@ import type {
 import type { UserProfile } from "./types/profile";
 import type { Department } from "./types/department";
 
-type AppView = "dashboard" | "statistics" | "archive" | "users";
+type AppView = "dashboard" | "statistics" | "archive" | "activity" | "users";
 
 const ALL_DEPARTMENTS = "ทุกแผนก";
 
@@ -539,6 +540,12 @@ function App() {
                 <span>▣</span> คลังสำรอง <b>{archivedTickets.length}</b>
               </button>
               <button
+                className={activeView === "activity" ? "active" : ""}
+                onClick={() => showView("activity")}
+              >
+                <span>◷</span> ประวัติการดำเนินการ
+              </button>
+              <button
                 className={activeView === "users" ? "active" : ""}
                 onClick={() => showView("users")}
               >
@@ -594,6 +601,12 @@ function App() {
               onClick={() => showView("archive")}
             >
               สำรอง ({archivedTickets.length})
+            </button>
+            <button
+              className={activeView === "activity" ? "active" : ""}
+              onClick={() => showView("activity")}
+            >
+              ประวัติ
             </button>
             <button
               className={activeView === "users" ? "active" : ""}
@@ -938,6 +951,14 @@ function App() {
           onRestore={(id) => void handleRestore(id)}
           onDelete={(id) => void handlePermanentDelete(id)}
           onOpenChat={setActiveChatTicket}
+        />
+      )}
+
+      {isAdmin && activeView === "activity" && (
+        <ActivityLogPage
+          onOpenRequest={(requestId) =>
+            void handleOpenNotificationRequest(requestId)
+          }
         />
       )}
 

@@ -1,4 +1,9 @@
 import { useMemo, useState } from "react";
+import {
+  downloadCsv,
+  formatExportDate,
+  makeExportFilename,
+} from "../services/reportExportService";
 import type { Ticket } from "../types/ticket";
 
 type PeriodMode = "day" | "month" | "year";
@@ -35,6 +40,18 @@ const thaiMonths = [
   "พ.ย.",
   "ธ.ค.",
 ];
+
+const statusLabels = {
+  waiting: "รอรับเรื่อง",
+  in_progress: "กำลังดำเนินการ",
+  done: "เสร็จสิ้น",
+} as const;
+
+const priorityLabels = {
+  urgent: "เร่งด่วน",
+  normal: "ปกติ",
+  low: "ไม่เร่งด่วน",
+} as const;
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -230,12 +247,77 @@ export default function StatisticsPage({
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [mode, periods, tickets]);
 
+  const rangeTickets = useMemo(() => {
+    const keys = new Set(periods.map((period) => period.key));
+    return tickets.filter((ticket) =>
+      keys.has(getPeriodKey(ticket.createdAt, mode)),
+    );
+  }, [mode, periods, tickets]);
+
   const completionRate = summary.total
     ? Math.round((summary.done / summary.total) * 100)
     : 0;
   const rangeLabel =
     mode === "day" ? "7 วันล่าสุด" : mode === "month" ? "12 เดือนล่าสุด" : "5 ปีล่าสุด";
   const maxDepartment = Math.max(1, ...departmentStats.map(([, total]) => total));
+
+  function handleExportReport() {
+    const rows: Array<Array<string | number>> = [
+      ["รายงานสถิติคำขอ IT"],
+      ["ช่วงรายงาน", rangeLabel],
+      ["ส่งออกเมื่อ", formatExportDate(new Date())],
+      ["คำขอทั้งหมด", summary.total],
+      ["รอรับเรื่อง", summary.waiting],
+      ["กำลังดำเนินการ", summary.inProgress],
+      ["เสร็จสิ้น", summary.done],
+      ["คลังสำรอง", summary.archived],
+      ["อัตราสำเร็จ", `${completionRate}%`],
+      [],
+      [
+        "ช่วงเวลา",
+        "ทั้งหมด",
+        "รอรับเรื่อง",
+        "กำลังดำเนินการ",
+        "เสร็จสิ้น",
+        "คลังสำรอง",
+      ],
+      ...[...periods].reverse().map((period) => [
+        period.fullLabel,
+        period.total,
+        period.waiting,
+        period.inProgress,
+        period.done,
+        period.archived,
+      ]),
+      [],
+      [
+        "เลขคำขอ",
+        "วันที่แจ้ง",
+        "ชื่อผู้แจ้ง",
+        "อีเมล",
+        "แผนก",
+        "ประเภทปัญหา",
+        "ความสำคัญ",
+        "หัวข้อ",
+        "สถานะ",
+        "คลังสำรอง",
+      ],
+      ...rangeTickets.map((ticket) => [
+        ticket.code,
+        formatExportDate(ticket.createdAt),
+        ticket.requesterName,
+        ticket.requesterEmail,
+        ticket.department,
+        ticket.category,
+        priorityLabels[ticket.priority],
+        ticket.subject,
+        statusLabels[ticket.status],
+        ticket.archivedAt ? "เก็บสำรองแล้ว" : "รายการปัจจุบัน",
+      ]),
+    ];
+
+    downloadCsv(makeExportFilename(`it-report-${mode}`), rows);
+  }
 
   return (
     <section className="content subpage-content" id="statistics-top">
@@ -246,20 +328,30 @@ export default function StatisticsPage({
           <h1>สถิติคำขอ IT</h1>
           <p>ติดตามปริมาณงานและผลการดำเนินงานตามช่วงเวลา</p>
         </div>
-        <div className="period-tabs" aria-label="เลือกช่วงสถิติ">
-          {([
-            ["day", "รายวัน"],
-            ["month", "รายเดือน"],
-            ["year", "รายปี"],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              className={mode === value ? "active" : ""}
-              onClick={() => setMode(value)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="statistics-header-actions">
+          <div className="period-tabs" aria-label="เลือกช่วงสถิติ">
+            {([
+              ["day", "รายวัน"],
+              ["month", "รายเดือน"],
+              ["year", "รายปี"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                className={mode === value ? "active" : ""}
+                onClick={() => setMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="export-report-button"
+            type="button"
+            disabled={isLoading}
+            onClick={handleExportReport}
+          >
+            <span>⇩</span> Export รายงาน
+          </button>
         </div>
       </header>
 

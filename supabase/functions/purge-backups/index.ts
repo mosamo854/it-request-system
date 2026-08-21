@@ -14,6 +14,7 @@ const corsHeaders = {
 interface RequestRow {
   id: string;
   code: string;
+  subject: string;
   image_path: string | null;
   archived_at: string | null;
 }
@@ -65,6 +66,9 @@ Deno.serve(async (request: Request) => {
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    let actorId: string | null = null;
+    let actorName = "ระบบอัตโนมัติ";
+    let actorEmail: string | null = null;
 
     if (!isScheduledCall) {
       const authorization = request.headers.get("Authorization");
@@ -89,13 +93,17 @@ Deno.serve(async (request: Request) => {
       const { data: callerProfile, error: profileLookupError } =
         await adminClient
           .from("profiles")
-          .select("role")
+          .select("role, full_name, email")
           .eq("id", caller.id)
           .single();
 
       if (profileLookupError || callerProfile?.role !== "admin") {
         return jsonResponse({ error: "เฉพาะผู้ดูแลฝ่าย IT เท่านั้น" }, 403);
       }
+
+      actorId = caller.id;
+      actorName = callerProfile.full_name;
+      actorEmail = callerProfile.email;
 
       if (!requestId) {
         return jsonResponse({ error: "กรุณาระบุคำขอที่ต้องการลบ" }, 400);
@@ -112,7 +120,7 @@ Deno.serve(async (request: Request) => {
 
     let requestQuery = adminClient
       .from("it_requests")
-      .select("id, code, image_path, archived_at")
+      .select("id, code, subject, image_path, archived_at")
       .not("archived_at", "is", null)
       .order("archived_at", { ascending: true })
       .limit(MAX_REQUESTS_PER_RUN);
@@ -180,6 +188,35 @@ Deno.serve(async (request: Request) => {
       .in("id", requestIds);
 
     if (requestDeleteError) throw requestDeleteError;
+
+    const { error: activityLogError } = await adminClient
+      .from("activity_logs")
+      .insert(
+        requests.map((item) => ({
+          actor_id: actorId,
+          actor_name: actorName,
+          actor_email: actorEmail,
+          action: isScheduledCall
+            ? "request_auto_deleted"
+            : "request_deleted",
+          entity_type: "request",
+          entity_id: item.id,
+          request_id: null,
+          request_code: item.code,
+          description: isScheduledCall
+            ? `ระบบลบคำขอ “${item.subject}” เมื่อครบกำหนดสำรอง 7 วัน`
+            : `ลบคำขอ “${item.subject}” ออกจากคลังสำรองถาวร`,
+          metadata: {
+            subject: item.subject,
+            archived_at: item.archived_at,
+            deletion_mode: isScheduledCall ? "scheduled" : "manual",
+          },
+        })),
+      );
+
+    if (activityLogError && activityLogError.code !== "42P01") {
+      console.error("Failed to write activity log", activityLogError);
+    }
 
     return jsonResponse({
       mode: isScheduledCall ? "scheduled" : "manual",

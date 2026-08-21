@@ -69,7 +69,7 @@ Deno.serve(async (request: Request) => {
     });
     const { data: callerProfile, error: callerProfileError } = await adminClient
       .from("profiles")
-      .select("role")
+      .select("role, full_name, email")
       .eq("id", caller.id)
       .single();
 
@@ -204,6 +204,35 @@ Deno.serve(async (request: Request) => {
         );
       }
       return jsonResponse({ error: updateAuthError.message }, 400);
+    }
+
+    const changedFields = [
+      oldProfile.full_name !== fullName ? "full_name" : null,
+      oldProfile.email !== email ? "email" : null,
+      oldProfile.department !== department ? "department" : null,
+      oldProfile.phone !== phone ? "phone" : null,
+      password ? "password" : null,
+    ].filter((field): field is string => Boolean(field));
+
+    const { error: activityLogError } = await adminClient
+      .from("activity_logs")
+      .insert({
+        actor_id: caller.id,
+        actor_name: callerProfile.full_name,
+        actor_email: callerProfile.email,
+        action: "user_updated",
+        entity_type: "user",
+        entity_id: userId,
+        description: `แก้ไขบัญชีผู้ใช้ “${fullName}”`,
+        metadata: {
+          target_email: email,
+          department,
+          changed_fields: changedFields,
+        },
+      });
+
+    if (activityLogError && activityLogError.code !== "42P01") {
+      console.error("Failed to write activity log", activityLogError);
     }
 
     return jsonResponse({ profile: updatedProfile }, 200);
