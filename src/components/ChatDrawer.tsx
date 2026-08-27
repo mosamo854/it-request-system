@@ -167,7 +167,9 @@ export default function ChatDrawer({
           <div>
             <span className="chat-online"><i /> ห้องสนทนา</span>
             <h2>{ticket.subject}</h2>
-            <p>{ticket.code} · {ticket.department}</p>
+            <p>
+              {ticket.code} · {ticket.requesterDepartment} → {ticket.targetDepartment}
+            </p>
           </div>
           <button onClick={onClose} aria-label="ปิดแชต">×</button>
         </header>

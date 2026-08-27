@@ -10,6 +10,8 @@ interface ArchivePageProps {
   onRestore: (id: string) => void;
   onDelete: (id: string) => void;
   onOpenChat: (ticket: Ticket) => void;
+  canRestore: boolean;
+  canDelete: boolean;
 }
 
 const BACKUP_RETENTION_DAYS = 7;
@@ -60,6 +62,8 @@ export default function ArchivePage({
   onRestore,
   onDelete,
   onOpenChat,
+  canRestore,
+  canDelete,
 }: ArchivePageProps) {
   const [query, setQuery] = useState("");
 
@@ -68,7 +72,13 @@ export default function ArchivePage({
     return tickets.filter((ticket) =>
       !normalized
         ? true
-        : [ticket.code, ticket.subject, ticket.requesterName, ticket.department]
+        : [
+            ticket.code,
+            ticket.subject,
+            ticket.requesterName,
+            ticket.requesterDepartment,
+            ticket.targetDepartment,
+          ]
             .join(" ")
             .toLowerCase()
             .includes(normalized),
@@ -78,7 +88,7 @@ export default function ArchivePage({
   return (
     <section className="content subpage-content" id="archive-top">
       <header className="subpage-header">
-        <div className="mobile-brand">IT</div>
+        <div className="mobile-brand">RC</div>
         <div>
           <span className="eyebrow">Backup Archive</span>
           <h1>คลังสำรองคำขอ</h1>
@@ -138,8 +148,12 @@ export default function ArchivePage({
                       <b>{ticket.requesterName}</b>
                     </span>
                     <span>
-                      <small>แผนก</small>
-                      <b>{ticket.department}</b>
+                      <small>แผนกผู้ส่ง</small>
+                      <b>{ticket.requesterDepartment}</b>
+                    </span>
+                    <span>
+                      <small>แผนกปลายทาง</small>
+                      <b>{ticket.targetDepartment}</b>
                     </span>
                     <span>
                       <small>วันที่ส่ง</small>
@@ -162,7 +176,7 @@ export default function ArchivePage({
                   >
                     <span>•••</span> เปิดแชต
                   </button>
-                  <button
+                  {canRestore && <button
                     className="restore-button"
                     disabled={restoringId === ticket.id}
                     onClick={() => onRestore(ticket.id)}
@@ -170,8 +184,8 @@ export default function ArchivePage({
                     {restoringId === ticket.id
                       ? "กำลังกู้คืน…"
                       : "↶ กู้คืนรายการ"}
-                  </button>
-                  <button
+                  </button>}
+                  {canDelete && <button
                     className="permanent-delete-button"
                     disabled={deletingId === ticket.id}
                     onClick={() => onDelete(ticket.id)}
@@ -179,7 +193,7 @@ export default function ArchivePage({
                     {deletingId === ticket.id
                       ? "กำลังลบถาวร…"
                       : "⌫ ลบถาวรทันที"}
-                  </button>
+                  </button>}
                 </div>
               </article>
             );

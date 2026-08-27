@@ -9,6 +9,7 @@ create table if not exists public.activity_logs (
   action text not null check (
     action in (
       'request_created',
+      'request_assigned',
       'status_changed',
       'request_archived',
       'request_restored',
@@ -25,10 +26,41 @@ create table if not exists public.activity_logs (
   entity_id uuid,
   request_id uuid references public.it_requests(id) on delete set null,
   request_code text,
+  target_department text,
   description text not null check (char_length(description) between 1 and 500),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.activity_logs
+  add column if not exists target_department text;
+
+update public.activity_logs as activity
+set target_department = request.target_department
+from public.it_requests as request
+where activity.request_id = request.id
+  and activity.target_department is null;
+
+alter table public.activity_logs
+  drop constraint if exists activity_logs_action_check;
+
+alter table public.activity_logs
+  add constraint activity_logs_action_check
+  check (
+    action in (
+      'request_created',
+      'request_assigned',
+      'status_changed',
+      'request_archived',
+      'request_restored',
+      'request_deleted',
+      'request_auto_deleted',
+      'department_created',
+      'user_created',
+      'user_updated',
+      'admin_access_updated'
+    )
+  );
 
 create index if not exists activity_logs_created_at_idx
   on public.activity_logs (created_at desc);
@@ -40,6 +72,10 @@ create index if not exists activity_logs_request_idx
   on public.activity_logs (request_id, created_at desc)
   where request_id is not null;
 
+create index if not exists activity_logs_target_department_idx
+  on public.activity_logs (target_department, created_at desc)
+  where target_department is not null;
+
 alter table public.activity_logs enable row level security;
 
 drop policy if exists "Admins can view activity logs"
@@ -47,7 +83,20 @@ drop policy if exists "Admins can view activity logs"
 create policy "Admins can view activity logs"
 on public.activity_logs for select
 to authenticated
-using (private.is_admin());
+using (
+  private.is_super_admin()
+  or (
+    private.has_permission('activity.view')
+    and (
+      entity_type <> 'request'
+      or target_department = (
+        select profile.department
+        from public.profiles as profile
+        where profile.id = auth.uid()
+      )
+    )
+  )
+);
 
 revoke all on table public.activity_logs from anon, authenticated;
 grant select on table public.activity_logs to authenticated;
@@ -79,6 +128,7 @@ begin
       entity_id,
       request_id,
       request_code,
+      target_department,
       description,
       metadata
     )
@@ -91,9 +141,11 @@ begin
       new.id,
       new.id,
       new.code,
+      new.target_department,
       'สร้างคำขอ “' || left(new.subject, 350) || '”',
       jsonb_build_object(
-        'department', new.department,
+        'requester_department', new.department,
+        'target_department', new.target_department,
         'priority', new.priority,
         'requester_name', new.requester_name
       )
@@ -119,6 +171,7 @@ begin
       entity_id,
       request_id,
       request_code,
+      target_department,
       description,
       metadata
     )
@@ -131,10 +184,49 @@ begin
       new.id,
       new.id,
       new.code,
+      new.target_department,
       'เปลี่ยนสถานะเป็น “' || status_label || '”',
       jsonb_build_object(
         'old_status', old.status,
         'new_status', new.status,
+        'subject', new.subject
+      )
+    );
+  end if;
+
+  if old.assigned_to is distinct from new.assigned_to then
+    insert into public.activity_logs (
+      actor_id,
+      actor_name,
+      actor_email,
+      action,
+      entity_type,
+      entity_id,
+      request_id,
+      request_code,
+      target_department,
+      description,
+      metadata
+    )
+    values (
+      current_actor_id,
+      current_actor_name,
+      current_actor_email,
+      'request_assigned',
+      'request',
+      new.id,
+      new.id,
+      new.code,
+      new.target_department,
+      case
+        when new.assigned_to is null then 'ยกเลิกผู้รับผิดชอบคำขอ'
+        else 'มอบหมายคำขอให้ “' || coalesce(new.assigned_to_name, 'ผู้ใช้งาน') || '”'
+      end,
+      jsonb_build_object(
+        'old_assigned_to', old.assigned_to,
+        'old_assigned_to_name', old.assigned_to_name,
+        'new_assigned_to', new.assigned_to,
+        'new_assigned_to_name', new.assigned_to_name,
         'subject', new.subject
       )
     );
@@ -150,6 +242,7 @@ begin
       entity_id,
       request_id,
       request_code,
+      target_department,
       description,
       metadata
     )
@@ -162,6 +255,7 @@ begin
       new.id,
       new.id,
       new.code,
+      new.target_department,
       'ย้ายคำขอไปยังคลังสำรอง',
       jsonb_build_object('subject', new.subject)
     );
@@ -175,6 +269,7 @@ begin
       entity_id,
       request_id,
       request_code,
+      target_department,
       description,
       metadata
     )
@@ -187,6 +282,7 @@ begin
       new.id,
       new.id,
       new.code,
+      new.target_department,
       'กู้คืนคำขอจากคลังสำรอง',
       jsonb_build_object('subject', new.subject)
     );
@@ -242,7 +338,7 @@ revoke all on function private.log_department_activity() from public;
 
 drop trigger if exists log_it_request_activity on public.it_requests;
 create trigger log_it_request_activity
-after insert or update of status, archived_at on public.it_requests
+after insert or update of status, archived_at, assigned_to on public.it_requests
 for each row execute function private.log_it_request_activity();
 
 drop trigger if exists log_department_activity on public.departments;

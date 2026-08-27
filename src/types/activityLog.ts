@@ -1,5 +1,6 @@
 export type ActivityAction =
   | "request_created"
+  | "request_assigned"
   | "status_changed"
   | "request_archived"
   | "request_restored"
@@ -7,7 +8,8 @@ export type ActivityAction =
   | "request_auto_deleted"
   | "department_created"
   | "user_created"
-  | "user_updated";
+  | "user_updated"
+  | "admin_access_updated";
 
 export type ActivityEntityType = "request" | "department" | "user";
 

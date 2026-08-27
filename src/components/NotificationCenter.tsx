@@ -37,6 +37,15 @@ function formatNotificationTime(value: string) {
 }
 
 function NotificationIcon({ type }: { type: NotificationType }) {
+  if (type === "request_assigned") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="9" cy="8" r="3" />
+        <path d="M4 19c.4-3.2 2-5 5-5 1.2 0 2.2.3 3 .9M14 17h6M17 14l3 3-3 3" />
+      </svg>
+    );
+  }
+
   if (type === "message_received") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">

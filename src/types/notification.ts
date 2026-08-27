@@ -1,5 +1,6 @@
 export type NotificationType =
   | "request_created"
+  | "request_assigned"
   | "status_changed"
   | "message_received";
 

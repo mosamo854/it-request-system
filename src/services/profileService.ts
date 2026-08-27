@@ -1,6 +1,8 @@
 import { supabase } from "../lib/supabase";
 import type {
+  AdminPermission,
   CreateManagedUserInput,
+  ManageAdminAccessInput,
   UpdateManagedUserInput,
   UserProfile,
   UserRole,
@@ -13,6 +15,7 @@ interface ProfileRow {
   department: string | null;
   phone: string | null;
   role: UserRole;
+  permissions: AdminPermission[] | null;
   created_at: string;
 }
 
@@ -24,6 +27,7 @@ function mapProfile(row: ProfileRow): UserProfile {
     department: row.department,
     phone: row.phone ?? null,
     role: row.role,
+    permissions: row.permissions ?? [],
     createdAt: row.created_at,
   };
 }
@@ -96,5 +100,19 @@ export async function updateManagedUser(input: UpdateManagedUserInput) {
   });
 
   if (error) throw new Error(await getFunctionErrorMessage(error, "update-user"));
+  if (data?.error) throw new Error(String(data.error));
+}
+
+export async function manageAdminAccess(input: ManageAdminAccessInput) {
+  const { data, error } = await supabase.functions.invoke(
+    "manage-admin-access",
+    { body: input },
+  );
+
+  if (error) {
+    throw new Error(
+      await getFunctionErrorMessage(error, "manage-admin-access"),
+    );
+  }
   if (data?.error) throw new Error(String(data.error));
 }

@@ -14,12 +14,17 @@ interface TicketRow {
   requester_name: string;
   requester_email: string;
   department: string;
+  target_department: string;
   category: string;
   priority: TicketPriority;
   subject: string;
   detail: string;
   image_path: string | null;
   status: TicketStatus;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  assigned_at: string | null;
+  assigned_by: string | null;
   archived_at: string | null;
   archived_by: string | null;
   created_at: string;
@@ -33,13 +38,18 @@ function mapTicket(row: TicketRow): Ticket {
     requesterUserId: row.requester_user_id ?? null,
     requesterName: row.requester_name,
     requesterEmail: row.requester_email,
-    department: row.department,
+    requesterDepartment: row.department,
+    targetDepartment: row.target_department,
     category: row.category,
     priority: row.priority,
     subject: row.subject,
     detail: row.detail,
     imagePath: row.image_path ?? null,
     status: row.status,
+    assignedTo: row.assigned_to ?? null,
+    assignedToName: row.assigned_to_name ?? null,
+    assignedAt: row.assigned_at ?? null,
+    assignedBy: row.assigned_by ?? null,
     archivedAt: row.archived_at ?? null,
     archivedBy: row.archived_by ?? null,
     createdAt: row.created_at,
@@ -68,7 +78,8 @@ export async function createTicket(
       requester_name: input.requesterName.trim(),
       requester_user_id: input.requesterUserId,
       requester_email: input.requesterEmail.trim().toLowerCase(),
-      department: input.department,
+      department: input.requesterDepartment,
+      target_department: input.targetDepartment,
       category: input.category,
       priority: input.priority,
       subject: input.subject.trim(),

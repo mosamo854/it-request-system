@@ -1,4 +1,11 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 import ActivityLogPage from "./components/ActivityLogPage";
 import ArchivePage from "./components/ArchivePage";
@@ -9,6 +16,10 @@ import NotificationCenter from "./components/NotificationCenter";
 import StatisticsPage from "./components/StatisticsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import { supabase } from "./lib/supabase";
+import {
+  assignRequest,
+  getAssignableMembers,
+} from "./services/assignmentService";
 import { getDepartments } from "./services/departmentService";
 import { validateImage } from "./services/imageService";
 import { getCurrentProfile } from "./services/profileService";
@@ -26,12 +37,13 @@ import type {
   TicketPriority,
   TicketStatus,
 } from "./types/ticket";
-import type { UserProfile } from "./types/profile";
+import { hasPermission, type UserProfile } from "./types/profile";
 import type { Department } from "./types/department";
+import type { AssignableMember } from "./types/assignment";
 
 type AppView = "dashboard" | "statistics" | "archive" | "activity" | "users";
 
-const ALL_DEPARTMENTS = "ทุกแผนก";
+const ALL_DEPARTMENTS = "ทั้งหมด";
 
 const statusMeta: Record<
   TicketStatus,
@@ -106,8 +118,15 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [submittedCode, setSubmittedCode] = useState("");
+  const [submittedTargetDepartment, setSubmittedTargetDepartment] = useState("");
   const [requestImagePreview, setRequestImagePreview] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [isLoadingAssignableMembers, setIsLoadingAssignableMembers] =
+    useState(false);
+  const [membersByDepartment, setMembersByDepartment] = useState<
+    Record<string, AssignableMember[]>
+  >({});
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -185,21 +204,107 @@ function App() {
     };
   }, [session]);
 
-  const isAdmin = profile?.role === "admin";
+  const isStaff = profile?.role === "admin" || profile?.role === "super_admin";
+  const canViewRequests = hasPermission(profile, "requests.view");
+  const canUpdateRequests = hasPermission(profile, "requests.update");
+  const canArchiveRequests = hasPermission(profile, "requests.archive");
+  const canViewArchive = hasPermission(profile, "archive.view");
+  const canRestoreArchive = hasPermission(profile, "archive.restore");
+  const canDeleteArchive = hasPermission(profile, "archive.delete");
+  const canViewStatistics = hasPermission(profile, "statistics.view");
+  const canExportStatistics = hasPermission(profile, "statistics.export");
+  const canViewActivity = hasPermission(profile, "activity.view");
+  const canExportActivity = hasPermission(profile, "activity.export");
+  const canViewUsers = hasPermission(profile, "users.view");
+  const canCreateUsers = hasPermission(profile, "users.create");
 
   const departmentNames = useMemo(
-    () => [ALL_DEPARTMENTS, ...departments.map((department) => department.name)],
-    [departments],
+    () => [
+      ALL_DEPARTMENTS,
+      ...departments
+        .filter(
+          (department) =>
+            profile?.role === "super_admin" ||
+            !isStaff ||
+            department.name === profile?.department,
+        )
+        .map((department) => department.name),
+    ],
+    [departments, isStaff, profile?.department, profile?.role],
   );
 
+  const visibleTickets = useMemo(
+    () =>
+      profile?.role === "admin"
+        ? tickets.filter(
+            (ticket) => ticket.targetDepartment === profile.department,
+          )
+        : tickets,
+    [profile?.department, profile?.role, tickets],
+  );
+
+  useEffect(() => {
+    if (!canUpdateRequests) {
+      setMembersByDepartment((current) =>
+        Object.keys(current).length > 0 ? {} : current,
+      );
+      return;
+    }
+
+    const missingDepartments = Array.from(
+      new Set(
+        visibleTickets
+          .filter((ticket) => !ticket.archivedAt)
+          .map((ticket) => ticket.targetDepartment)
+          .filter(
+            (department) =>
+              !Object.prototype.hasOwnProperty.call(
+                membersByDepartment,
+                department,
+              ),
+          ),
+      ),
+    );
+    if (missingDepartments.length === 0) return;
+
+    let isMounted = true;
+    setIsLoadingAssignableMembers(true);
+    void Promise.all(
+      missingDepartments.map(async (department) => [
+        department,
+        await getAssignableMembers(department),
+      ] as const),
+    )
+      .then((entries) => {
+        if (!isMounted) return;
+        setMembersByDepartment((current) => ({
+          ...current,
+          ...Object.fromEntries(entries),
+        }));
+      })
+      .catch((error) => {
+        if (isMounted) setPageError(getErrorMessage(error));
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingAssignableMembers(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canUpdateRequests, membersByDepartment, visibleTickets]);
+
   const activeTickets = useMemo(
-    () => (isAdmin ? tickets.filter((ticket) => !ticket.archivedAt) : tickets),
-    [isAdmin, tickets],
+    () =>
+      isStaff
+        ? visibleTickets.filter((ticket) => !ticket.archivedAt)
+        : visibleTickets,
+    [isStaff, visibleTickets],
   );
 
   const archivedTickets = useMemo(
-    () => tickets.filter((ticket) => Boolean(ticket.archivedAt)),
-    [tickets],
+    () => visibleTickets.filter((ticket) => Boolean(ticket.archivedAt)),
+    [visibleTickets],
   );
 
   const filteredTickets = useMemo(() => {
@@ -208,7 +313,7 @@ function App() {
     return activeTickets.filter((ticket) => {
       const matchesDepartment =
         activeDepartment === ALL_DEPARTMENTS ||
-        ticket.department === activeDepartment;
+        ticket.targetDepartment === activeDepartment;
       const matchesStatus =
         statusFilter === "all" || ticket.status === statusFilter;
       const matchesQuery =
@@ -217,7 +322,9 @@ function App() {
           ticket.code,
           ticket.subject,
           ticket.requesterName,
-          ticket.department,
+          ticket.requesterDepartment,
+          ticket.targetDepartment,
+          ticket.assignedToName,
         ]
           .join(" ")
           .toLowerCase()
@@ -239,8 +346,40 @@ function App() {
     [activeTickets],
   );
 
+  const canAccessView = useCallback((view: AppView) => {
+    if (profile?.role === "user") return view === "dashboard";
+    if (!isStaff) return false;
+    if (view === "dashboard") return canViewRequests;
+    if (view === "statistics") return canViewStatistics;
+    if (view === "archive") return canViewArchive;
+    if (view === "activity") return canViewActivity;
+    return canViewUsers;
+  }, [
+    canViewActivity,
+    canViewArchive,
+    canViewRequests,
+    canViewStatistics,
+    canViewUsers,
+    isStaff,
+    profile?.role,
+  ]);
+
+  useEffect(() => {
+    if (!profile || profile.role === "user" || canAccessView(activeView)) return;
+
+    const firstAllowedView = (
+      ["dashboard", "statistics", "archive", "activity", "users"] as AppView[]
+    ).find((view) => canAccessView(view));
+
+    if (firstAllowedView) setActiveView(firstAllowedView);
+  }, [
+    activeView,
+    canAccessView,
+    profile,
+  ]);
+
   function showView(view: AppView, targetId?: string) {
-    if (view !== "dashboard" && !isAdmin) return;
+    if (!canAccessView(view)) return;
     setActiveView(view);
     window.setTimeout(() => {
       if (targetId) {
@@ -252,8 +391,9 @@ function App() {
   }
 
   function openRequestForm() {
-    if (isAdmin) return;
+    if (profile?.role !== "user") return;
     setSubmittedCode("");
+    setSubmittedTargetDepartment("");
     setFormError("");
     setIsFormOpen(true);
   }
@@ -300,7 +440,8 @@ function App() {
       requesterUserId: profile.id,
       requesterName: profile.fullName,
       requesterEmail: profile.email,
-      department: profile.department,
+      requesterDepartment: profile.department,
+      targetDepartment: String(form.get("targetDepartment") ?? "").trim(),
       category: String(form.get("category") ?? ""),
       priority: String(form.get("priority") ?? "normal") as TicketPriority,
       subject: String(form.get("subject") ?? ""),
@@ -317,6 +458,7 @@ function App() {
       const newTicket = await createTicket(input, image);
       setTickets((current) => [newTicket, ...current]);
       setSubmittedCode(newTicket.code);
+      setSubmittedTargetDepartment(newTicket.targetDepartment);
       formElement.reset();
       setRequestImagePreview((current) => {
         if (current) URL.revokeObjectURL(current);
@@ -330,8 +472,10 @@ function App() {
   }
 
   async function handleStatusChange(id: string, nextStatus: TicketStatus) {
-    if (!isAdmin) return;
-    const previousStatus = tickets.find((ticket) => ticket.id === id)?.status;
+    const targetTicket = tickets.find((ticket) => ticket.id === id);
+    const isAssignedMember = targetTicket?.assignedTo === profile?.id;
+    if (!canUpdateRequests && !isAssignedMember) return;
+    const previousStatus = targetTicket?.status;
     setPageError("");
     setUpdatingId(id);
     setTickets((current) =>
@@ -359,8 +503,33 @@ function App() {
     }
   }
 
+  async function handleAssignRequest(
+    id: string,
+    assigneeId: string | null,
+  ) {
+    if (!canUpdateRequests) return;
+
+    setPageError("");
+    setAssigningId(id);
+    try {
+      await assignRequest(id, assigneeId);
+      const refreshedTickets = await getTickets();
+      setTickets(
+        profile?.role === "admin"
+          ? refreshedTickets.filter(
+              (ticket) => ticket.targetDepartment === profile.department,
+            )
+          : refreshedTickets,
+      );
+    } catch (error) {
+      setPageError(getErrorMessage(error));
+    } finally {
+      setAssigningId(null);
+    }
+  }
+
   async function handleArchive(id: string) {
-    if (!isAdmin) return;
+    if (!canArchiveRequests || !profile) return;
     const ticket = tickets.find((item) => item.id === id);
     if (!ticket || ticket.status !== "done") return;
 
@@ -385,7 +554,7 @@ function App() {
   }
 
   async function handleRestore(id: string) {
-    if (!isAdmin) return;
+    if (!canRestoreArchive) return;
     setPageError("");
     setRestoringId(id);
     try {
@@ -401,7 +570,7 @@ function App() {
   }
 
   async function handlePermanentDelete(id: string) {
-    if (!isAdmin) return;
+    if (!canDeleteArchive) return;
     const ticket = tickets.find((item) => item.id === id);
     if (!ticket?.archivedAt) return;
 
@@ -429,8 +598,14 @@ function App() {
 
     try {
       const refreshedTickets = await getTickets();
-      setTickets(refreshedTickets);
-      const targetTicket = refreshedTickets.find(
+      const scopedTickets =
+        profile?.role === "admin"
+          ? refreshedTickets.filter(
+              (ticket) => ticket.targetDepartment === profile.department,
+            )
+          : refreshedTickets;
+      setTickets(scopedTickets);
+      const targetTicket = scopedTickets.find(
         (ticket) => ticket.id === requestId,
       );
 
@@ -462,7 +637,7 @@ function App() {
   if (isAuthLoading) {
     return (
       <main className="auth-loading">
-        <span className="brand-mark">IT</span>
+        <span className="brand-mark">RC</span>
         <div className="loading-spinner" />
         <p>กำลังตรวจสอบการเข้าสู่ระบบ…</p>
       </main>
@@ -474,7 +649,7 @@ function App() {
   if (isLoading && !profile) {
     return (
       <main className="auth-loading">
-        <span className="brand-mark">IT</span>
+        <span className="brand-mark">RC</span>
         <div className="loading-spinner" />
         <p>กำลังโหลดสิทธิ์ผู้ใช้งาน…</p>
       </main>
@@ -484,7 +659,7 @@ function App() {
   if (!profile) {
     return (
       <main className="profile-error-page">
-        <span className="brand-mark">IT</span>
+        <span className="brand-mark">RC</span>
         <h1>ไม่พบข้อมูลสิทธิ์ผู้ใช้งาน</h1>
         <p>{pageError || "กรุณา Run schema.sql และตั้งค่า Admin ก่อนใช้งาน"}</p>
         <button className="primary-button" onClick={() => void handleSignOut()}>
@@ -502,55 +677,63 @@ function App() {
         <a
           className="brand"
           href="#top"
-          aria-label="IT Desk หน้าหลัก"
+          aria-label="Request Center หน้าหลัก"
           onClick={(event) => {
             event.preventDefault();
             showView("dashboard", "top");
           }}
         >
-          <span className="brand-mark">IT</span>
+          <span className="brand-mark">RC</span>
           <span>
-            <strong>IT Desk</strong>
-            <small>Request Center</small>
+            <strong>Request Center</strong>
+            <small>Internal Services</small>
           </span>
         </a>
 
         <nav className="side-nav" aria-label="เมนูหลัก">
-          <button
-            className={activeView === "dashboard" ? "active" : ""}
-            onClick={() => showView("dashboard", "top")}
-          >
-            <span>⌂</span> ภาพรวม
-          </button>
-          <button onClick={() => showView("dashboard", "requests")}>
-            <span>≡</span> {isAdmin ? "คำขอทั้งหมด" : "คำขอของฉัน"} <b>{counts.all}</b>
-          </button>
-          {isAdmin && (
+          {(!isStaff || canViewRequests) && <>
+            <button
+              className={activeView === "dashboard" ? "active" : ""}
+              onClick={() => showView("dashboard", "top")}
+            >
+              <span>⌂</span> ภาพรวม
+            </button>
+            <button onClick={() => showView("dashboard", "requests")}>
+              <span>≡</span>{" "}
+              {profile.role === "super_admin"
+                ? "คำขอทั้งหมด"
+                : isStaff
+                  ? "คำขอถึงแผนกฉัน"
+                  : "คำขอของฉัน"}{" "}
+              <b>{counts.all}</b>
+            </button>
+          </>}
+          {isStaff && (
             <>
-              <button
+              {canViewStatistics && <button
                 className={activeView === "statistics" ? "active" : ""}
                 onClick={() => showView("statistics")}
               >
                 <span>⌁</span> สถิติ
-              </button>
-              <button
+              </button>}
+              {canViewArchive && <button
                 className={activeView === "archive" ? "active" : ""}
                 onClick={() => showView("archive")}
               >
                 <span>▣</span> คลังสำรอง <b>{archivedTickets.length}</b>
-              </button>
-              <button
+              </button>}
+              {canViewActivity && <button
                 className={activeView === "activity" ? "active" : ""}
                 onClick={() => showView("activity")}
               >
                 <span>◷</span> ประวัติการดำเนินการ
-              </button>
-              <button
+              </button>}
+              {canViewUsers && <button
                 className={activeView === "users" ? "active" : ""}
                 onClick={() => showView("users")}
               >
                 <span>♙</span> จัดการผู้ใช้
-              </button>
+              </button>}
             </>
           )}
         </nav>
@@ -569,7 +752,13 @@ function App() {
           <span className="avatar">{userEmail.charAt(0).toUpperCase()}</span>
           <span>
             <strong title={userEmail}>{profile.fullName}</strong>
-            <small>{isAdmin ? "Admin · ฝ่าย IT" : profile.department}</small>
+            <small>
+              {profile.role === "super_admin"
+                ? "Super Admin"
+                : profile.role === "admin"
+                  ? `Admin · ${profile.department ?? "ไม่ระบุแผนก"}`
+                  : profile.department}
+            </small>
           </span>
           <button
             className="logout-button"
@@ -582,79 +771,110 @@ function App() {
       </aside>
 
       <nav className="mobile-view-nav" aria-label="เปลี่ยนหน้า">
-        <button
+        {(!isStaff || canViewRequests) && <button
           className={activeView === "dashboard" ? "active" : ""}
           onClick={() => showView("dashboard", "top")}
         >
           ภาพรวม
-        </button>
-        {isAdmin && (
+        </button>}
+        {isStaff && (
           <>
-            <button
+            {canViewStatistics && <button
               className={activeView === "statistics" ? "active" : ""}
               onClick={() => showView("statistics")}
             >
               สถิติ
-            </button>
-            <button
+            </button>}
+            {canViewArchive && <button
               className={activeView === "archive" ? "active" : ""}
               onClick={() => showView("archive")}
             >
               สำรอง ({archivedTickets.length})
-            </button>
-            <button
+            </button>}
+            {canViewActivity && <button
               className={activeView === "activity" ? "active" : ""}
               onClick={() => showView("activity")}
             >
               ประวัติ
-            </button>
-            <button
+            </button>}
+            {canViewUsers && <button
               className={activeView === "users" ? "active" : ""}
               onClick={() => showView("users")}
             >
               ผู้ใช้
-            </button>
+            </button>}
           </>
         )}
       </nav>
 
-      {activeView === "dashboard" && (
+      {isStaff &&
+        !canViewRequests &&
+        !canViewStatistics &&
+        !canViewArchive &&
+        !canViewActivity &&
+        !canViewUsers && (
+          <section className="content subpage-content" id="no-access">
+            <header className="subpage-header">
+              <div className="mobile-brand">RC</div>
+              <div>
+                <span className="eyebrow">Access control</span>
+                <h1>ยังไม่มีสิทธิ์เข้าถึงฟังก์ชัน</h1>
+                <p>กรุณาติดต่อ Super Admin เพื่อกำหนดสิทธิ์ให้บัญชีนี้</p>
+              </div>
+            </header>
+          </section>
+        )}
+
+      {activeView === "dashboard" && (!isStaff || canViewRequests) && (
       <section className="content" id="top">
         <header className="topbar">
-          <div className="mobile-brand">IT</div>
+          <div className="mobile-brand">RC</div>
           <div>
-            <span className="eyebrow">IT Service Management</span>
-            <h1>{isAdmin ? "ศูนย์จัดการคำขอ IT" : "คำขอ IT ของฉัน"}</h1>
+            <span className="eyebrow">Internal Request Management</span>
+            <h1>
+              {profile.role === "super_admin"
+                ? "ศูนย์จัดการคำขอทุกแผนก"
+                : isStaff
+                  ? `คำขอที่ส่งถึง ${profile.department ?? "แผนกของฉัน"}`
+                  : "คำขอของฉัน"}
+            </h1>
           </div>
-          {isAdmin ? (
+          {canCreateUsers ? (
             <button className="primary-button" onClick={() => showView("users")}>
               <span>＋</span> เพิ่มผู้ใช้
             </button>
-          ) : (
+          ) : !isStaff ? (
             <button className="primary-button" onClick={openRequestForm}>
               <span>＋</span> ส่งคำขอใหม่
             </button>
-          )}
+          ) : null}
         </header>
 
         <section className="welcome-card">
           <div className="welcome-copy">
             <span className="live-pill">
-              <i /> IT Support พร้อมให้บริการ
+              <i /> ระบบคำขอกลางขององค์กร
             </span>
             <h2>
-              {isAdmin ? "คำขอจากทุกแผนก" : "มีปัญหาเรื่องไอที"}
+              {isStaff ? "รับคำขอจากแผนกอื่น" : "ต้องการความช่วยเหลือ"}
               <br />
-              {isAdmin ? "จัดการได้ในที่เดียว" : "แจ้งเราได้เลย"}
+              {isStaff ? "จัดการได้ในที่เดียว" : "เลือกแผนกแล้วส่งคำขอได้เลย"}
             </h2>
             <p>
-              {isAdmin
-                ? "เปลี่ยนสถานะ ตอบแชต เก็บคำขอ และติดตามสถิติของทีม IT"
-                : "ส่งรายละเอียดปัญหา ติดตามสถานะ และแชตกับทีม IT ได้ในที่เดียว"}
+              {isStaff
+                ? "ระบบจะแสดงเฉพาะฟังก์ชันที่ Super Admin อนุญาตให้บัญชีนี้"
+                : "ส่งคำขอไปยังแผนกที่เกี่ยวข้อง ติดตามสถานะ และพูดคุยได้ในที่เดียว"}
             </p>
-            {isAdmin ? (
-              <button className="light-button" onClick={() => showView("statistics")}>
-                ดูสถิติ <span>→</span>
+            {isStaff ? (
+              <button
+                className="light-button"
+                onClick={() =>
+                  canViewStatistics
+                    ? showView("statistics")
+                    : document.getElementById("requests")?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                {canViewStatistics ? "ดูสถิติ" : "ดูรายการคำขอ"} <span>→</span>
               </button>
             ) : (
               <button className="light-button" onClick={openRequestForm}>
@@ -687,7 +907,13 @@ function App() {
           >
             <span className="stat-icon all-icon">≡</span>
             <span>
-              <small>{isAdmin ? "คำขอทั้งหมด" : "คำขอของฉัน"}</small>
+              <small>
+                {profile.role === "super_admin"
+                  ? "คำขอทั้งหมด"
+                  : isStaff
+                    ? "คำขอถึงแผนกฉัน"
+                    : "คำขอของฉัน"}
+              </small>
               <strong>{counts.all}</strong>
             </span>
             <i>ดูทั้งหมด →</i>
@@ -729,12 +955,18 @@ function App() {
           </button>
         </section>
 
-        <section className={isAdmin ? "workspace-grid" : "workspace-grid user-workspace"}>
+        <section className={isStaff ? "workspace-grid" : "workspace-grid user-workspace"}>
           <div className="request-panel" id="requests">
             <div className="section-heading">
               <div>
                 <span className="eyebrow">รายการล่าสุด</span>
-                <h2>{isAdmin ? "คำขอของทุกแผนก" : "รายการคำขอของฉัน"}</h2>
+                <h2>
+                  {profile.role === "super_admin"
+                    ? "คำขอของทุกแผนก"
+                    : isStaff
+                      ? `คำขอที่ส่งถึง ${profile.department ?? "แผนกของฉัน"}`
+                      : "คำขอที่ส่งหรือได้รับมอบหมาย"}
+                </h2>
               </div>
               <span className="result-count">
                 {isLoading ? "กำลังโหลด…" : `${filteredTickets.length} รายการ`}
@@ -766,7 +998,7 @@ function App() {
               </select>
             </div>
 
-            {isAdmin && <div className="department-tabs" aria-label="กรองตามแผนก">
+            {isStaff && <div className="department-tabs" aria-label="กรองตามแผนก">
               {departmentNames.map((department) => (
                 <button
                   key={department}
@@ -792,7 +1024,7 @@ function App() {
                       >
                         <i /> {statusMeta[ticket.status].label}
                       </span>
-                      {!isAdmin && ticket.archivedAt && (
+                      {!isStaff && ticket.archivedAt && (
                         <span className="history-badge">เก็บเป็นประวัติแล้ว</span>
                       )}
                     </div>
@@ -811,7 +1043,9 @@ function App() {
                       </span>
                       <span>
                         <b>{ticket.requesterName}</b>
-                        <small>{ticket.department}</small>
+                        <small>
+                          จาก {ticket.requesterDepartment} → {ticket.targetDepartment}
+                        </small>
                       </span>
                       <span className="meta-divider" />
                       <span
@@ -821,9 +1055,60 @@ function App() {
                       </span>
                       <time>{formatCreatedAt(ticket.createdAt)}</time>
                     </div>
+                    <div
+                      className={`assignment-summary ${ticket.assignedTo ? "assigned" : "unassigned"}`}
+                    >
+                      <span>ผู้รับผิดชอบ</span>
+                      <strong>
+                        {ticket.assignedToName ?? "ยังไม่ได้มอบหมาย"}
+                      </strong>
+                    </div>
                   </div>
                   <div className="ticket-action">
-                    {isAdmin && <label>
+                    {canUpdateRequests && (
+                      <label>
+                        <span>
+                          {assigningId === ticket.id
+                            ? "กำลังมอบหมาย…"
+                            : "มอบหมายให้"}
+                        </span>
+                        <select
+                          aria-label={`มอบหมาย ${ticket.code}`}
+                          value={ticket.assignedTo ?? ""}
+                          disabled={
+                            assigningId === ticket.id ||
+                            isLoadingAssignableMembers
+                          }
+                          onChange={(event) =>
+                            void handleAssignRequest(
+                              ticket.id,
+                              event.target.value || null,
+                            )
+                          }
+                        >
+                          <option value="">ยังไม่มอบหมาย</option>
+                          {ticket.assignedTo &&
+                            !(
+                              membersByDepartment[ticket.targetDepartment] ?? []
+                            ).some(
+                              (member) => member.id === ticket.assignedTo,
+                            ) && (
+                              <option value={ticket.assignedTo}>
+                                {ticket.assignedToName ?? "ผู้รับผิดชอบปัจจุบัน"}
+                              </option>
+                            )}
+                          {(
+                            membersByDepartment[ticket.targetDepartment] ?? []
+                          ).map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.fullName}
+                              {member.role === "admin" ? " (Admin)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {(canUpdateRequests || ticket.assignedTo === profile.id) && <label>
                       <span>
                         {updatingId === ticket.id
                           ? "กำลังบันทึก…"
@@ -850,7 +1135,7 @@ function App() {
                     >
                       <span>•••</span> เปิดแชต
                     </button>
-                    {isAdmin && ticket.status === "done" && (
+                    {canArchiveRequests && ticket.status === "done" && (
                       <button
                         className="archive-ticket-button"
                         disabled={archivingId === ticket.id}
@@ -875,18 +1160,18 @@ function App() {
             </div>
           </div>
 
-          {isAdmin && <aside className="department-panel" id="departments">
+          {isStaff && <aside className="department-panel" id="departments">
             <div className="section-heading">
               <div>
                 <span className="eyebrow">ภาพรวม</span>
-                <h2>คำขอแยกตามแผนก</h2>
+                <h2>คำขอแยกตามแผนกปลายทาง</h2>
               </div>
             </div>
 
             <div className="department-list">
               {departmentNames.slice(1).map((department, index) => {
                 const total = activeTickets.filter(
-                  (ticket) => ticket.department === department,
+                  (ticket) => ticket.targetDepartment === department,
                 ).length;
                 const palette = ["blue", "violet", "orange", "green"][
                   index % 4
@@ -933,15 +1218,16 @@ function App() {
       </section>
       )}
 
-      {isAdmin && activeView === "statistics" && (
+      {canViewStatistics && activeView === "statistics" && (
         <StatisticsPage
-          tickets={tickets}
+          tickets={visibleTickets}
           isLoading={isLoading}
           errorMessage={pageError}
+          canExport={canExportStatistics}
         />
       )}
 
-      {isAdmin && activeView === "archive" && (
+      {canViewArchive && activeView === "archive" && (
         <ArchivePage
           tickets={archivedTickets}
           isLoading={isLoading}
@@ -951,18 +1237,22 @@ function App() {
           onRestore={(id) => void handleRestore(id)}
           onDelete={(id) => void handlePermanentDelete(id)}
           onOpenChat={setActiveChatTicket}
+          canRestore={canRestoreArchive}
+          canDelete={canDeleteArchive}
         />
       )}
 
-      {isAdmin && activeView === "activity" && (
+      {canViewActivity && activeView === "activity" && (
         <ActivityLogPage
+          canExport={canExportActivity}
+          canOpenRequests={canViewRequests}
           onOpenRequest={(requestId) =>
             void handleOpenNotificationRequest(requestId)
           }
         />
       )}
 
-      {isAdmin && activeView === "users" && (
+      {canViewUsers && activeView === "users" && (
         <UserManagementPage
           currentProfile={profile}
           departments={departments}
@@ -1001,7 +1291,7 @@ function App() {
               <div className="success-view">
                 <span className="success-check">✓</span>
                 <span className="eyebrow">ส่งคำขอสำเร็จ</span>
-                <h2>ทีม IT รับเรื่องแล้ว</h2>
+                <h2>{submittedTargetDepartment} รับเรื่องแล้ว</h2>
                 <p>
                   เลขคำขอของคุณคือ <strong>{submittedCode}</strong>
                   <br />
@@ -1017,10 +1307,10 @@ function App() {
             ) : (
               <>
                 <div className="modal-heading">
-                  <span className="eyebrow">แจ้งปัญหา IT</span>
+                  <span className="eyebrow">Internal Service Request</span>
                   <h2 id="request-form-title">ส่งคำขอใหม่</h2>
                   <p>
-                    กรอกรายละเอียดให้ครบ เพื่อให้ทีม IT ช่วยเหลือคุณได้เร็วขึ้น
+                    เลือกแผนกปลายทางและกรอกรายละเอียดให้ครบ เพื่อให้ผู้รับดำเนินการได้เร็วขึ้น
                   </p>
                 </div>
 
@@ -1033,19 +1323,34 @@ function App() {
                         <strong>{profile.fullName}</strong>
                         <b>{profile.email} · {profile.department ?? "ยังไม่ระบุแผนก"}</b>
                       </span>
-                      <i>ข้อมูลผู้แจ้งถูกล็อกจากบัญชี Login</i>
+                      <i>ข้อมูลผู้ส่งถูกล็อกจากบัญชี Login</i>
                     </div>
                     <label>
-                      <span>ประเภทปัญหา *</span>
+                      <span>ส่งถึงแผนก *</span>
+                      <select name="targetDepartment" required defaultValue="">
+                        <option value="" disabled>
+                          เลือกแผนกปลายทาง
+                        </option>
+                        {departments.map((department) => (
+                          <option key={department.id} value={department.name}>
+                            {department.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>ประเภทคำขอ *</span>
                       <select name="category" required defaultValue="">
                         <option value="" disabled>
                           เลือกประเภท
                         </option>
-                        <option>คอมพิวเตอร์และอุปกรณ์</option>
-                        <option>โปรแกรมและระบบ</option>
-                        <option>อินเทอร์เน็ตและเครือข่าย</option>
-                        <option>เครื่องพิมพ์</option>
-                        <option>บัญชีผู้ใช้และรหัสผ่าน</option>
+                        <option>ขออนุมัติและเอกสาร</option>
+                        <option>บุคคลและสวัสดิการ</option>
+                        <option>การเงินและบัญชี</option>
+                        <option>จัดซื้อและอุปกรณ์</option>
+                        <option>ระบบและเทคโนโลยี</option>
+                        <option>อาคารและสถานที่</option>
+                        <option>คำถามและขอข้อมูล</option>
                         <option>อื่น ๆ</option>
                       </select>
                     </label>
@@ -1093,7 +1398,7 @@ function App() {
                         required
                         minLength={3}
                         maxLength={120}
-                        placeholder="สรุปปัญหาสั้น ๆ"
+                        placeholder="สรุปคำขอสั้น ๆ"
                       />
                     </label>
                     <label className="full-width">

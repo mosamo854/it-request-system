@@ -936,6 +936,32 @@ textarea:focus {
   font-size: 11px;
 }
 
+.assignment-summary {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #748094;
+  background: #f1f4f8;
+  font-size: 11px;
+}
+
+.assignment-summary strong {
+  color: #536075;
+}
+
+.assignment-summary.assigned {
+  color: #087b8c;
+  background: #e8f7f9;
+}
+
+.assignment-summary.assigned strong {
+  color: #086b7a;
+}
+
 .ticket-action {
   display: flex;
   flex-direction: column;
@@ -5607,6 +5633,11 @@ textarea:focus {
   background: #e5f7f0;
 }
 
+.notification-type-icon.type-request_assigned {
+  color: #087b8c;
+  background: #e4f7fa;
+}
+
 .notification-type-icon svg {
   width: 20px;
   fill: none;
@@ -5768,5 +5799,177 @@ textarea:focus {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+/* Super Admin permission controls */
+.um-management-layout.directory-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.um-role-super_admin {
+  color: #7c2d12;
+  background: #ffedd5;
+  border-color: #fed7aa;
+}
+
+.um-row-action {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.um-row-action .um-permission-button {
+  color: #5b21b6;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.admin-access-dialog {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(900px, calc(100vh - 32px));
+  overflow: hidden;
+}
+
+.admin-access-header {
+  background: linear-gradient(135deg, #312e81, #6d28d9);
+}
+
+.admin-access-header h2,
+.admin-access-header p,
+.admin-access-header > div:nth-child(2) > span {
+  color: #fff;
+}
+
+.admin-access-header p {
+  opacity: 0.8;
+}
+
+.admin-access-form {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.admin-role-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-role-selector button {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  text-align: left;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.admin-role-selector button.selected {
+  color: #5b21b6;
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgb(139 92 246 / 12%);
+}
+
+.admin-role-selector strong {
+  font-size: 1rem;
+}
+
+.admin-role-selector span {
+  font-size: 0.82rem;
+}
+
+.permission-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.permission-group {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.permission-group legend {
+  padding: 0 0.4rem;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.permission-group > p {
+  margin: 0 0 0.8rem;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.permission-group > div {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.permission-group label {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.7rem;
+  background: #f8fafc;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.permission-group input {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.1rem;
+  accent-color: #6d28d9;
+}
+
+.permission-group label span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.permission-group label strong {
+  color: #334155;
+  font-size: 0.84rem;
+}
+
+.permission-group label small {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-demotion-warning {
+  padding: 1rem;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+}
+
+.admin-access-footer {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .permission-groups,
+  .admin-role-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-access-form {
+    padding: 1rem;
   }
 }

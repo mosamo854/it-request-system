@@ -22,6 +22,15 @@ function normalizeThaiPhone(value: string) {
   return null;
 }
 
+function hasPermission(
+  profile: { role: string; permissions?: string[] | null },
+  permission: string,
+) {
+  return profile.role === "super_admin" ||
+    (profile.role === "admin" &&
+      (profile.permissions ?? []).includes(permission));
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -60,12 +69,16 @@ Deno.serve(async (request: Request) => {
     });
     const { data: callerProfile, error: profileLookupError } = await adminClient
       .from("profiles")
-      .select("role, full_name, email")
+      .select("role, permissions, full_name, email")
       .eq("id", caller.id)
       .single();
 
-    if (profileLookupError || callerProfile?.role !== "admin") {
-      return jsonResponse({ error: "เฉพาะผู้ดูแลฝ่าย IT เท่านั้น" }, 403);
+    if (
+      profileLookupError ||
+      !callerProfile ||
+      !hasPermission(callerProfile, "users.create")
+    ) {
+      return jsonResponse({ error: "บัญชีนี้ไม่มีสิทธิ์สร้างผู้ใช้" }, 403);
     }
 
     const payload = await request.json();
@@ -101,7 +114,7 @@ Deno.serve(async (request: Request) => {
     if (departmentLookupError) {
       return jsonResponse({ error: departmentLookupError.message }, 500);
     }
-    if (!departmentRow || department === "ฝ่าย IT") {
+    if (!departmentRow) {
       return jsonResponse({ error: "กรุณาเลือกแผนกที่ถูกต้อง" }, 400);
     }
 
@@ -150,6 +163,7 @@ Deno.serve(async (request: Request) => {
         action: "user_created",
         entity_type: "user",
         entity_id: created.user.id,
+        target_department: department,
         description: `สร้างบัญชีผู้ใช้ “${fullName}”`,
         metadata: {
           target_email: email,

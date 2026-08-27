@@ -7,13 +7,32 @@ create table if not exists public.notifications (
   request_id uuid references public.it_requests(id) on delete cascade,
   actor_id uuid references auth.users(id) on delete set null,
   type text not null check (
-    type in ('request_created', 'status_changed', 'message_received')
+    type in (
+      'request_created',
+      'request_assigned',
+      'status_changed',
+      'message_received'
+    )
   ),
   title text not null check (char_length(title) between 1 and 160),
   body text not null check (char_length(body) between 1 and 500),
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications
+  drop constraint if exists notifications_type_check;
+
+alter table public.notifications
+  add constraint notifications_type_check
+  check (
+    type in (
+      'request_created',
+      'request_assigned',
+      'status_changed',
+      'message_received'
+    )
+  );
 
 create index if not exists notifications_user_created_idx
   on public.notifications (user_id, created_at desc);
@@ -86,9 +105,13 @@ begin
     (select auth.uid()),
     'request_created',
     'มีคำขอใหม่ ' || new.code,
-    left(new.requester_name || ' · ' || new.subject, 500)
+    left(new.department || ' → ' || new.target_department || ' · ' || new.requester_name || ' · ' || new.subject, 500)
   from public.profiles as profile
-  where profile.role = 'admin'
+  where private.can_access_department(
+      new.target_department,
+      'requests.view',
+      profile.id
+    )
     and profile.id is distinct from new.requester_user_id;
 
   return new;
@@ -137,6 +160,40 @@ begin
 end;
 $$;
 
+create or replace function private.notify_it_request_assigned()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if old.assigned_to is not distinct from new.assigned_to
+     or new.assigned_to is null
+     or new.assigned_to is not distinct from auth.uid() then
+    return new;
+  end if;
+
+  insert into public.notifications (
+    user_id,
+    request_id,
+    actor_id,
+    type,
+    title,
+    body
+  )
+  values (
+    new.assigned_to,
+    new.id,
+    auth.uid(),
+    'request_assigned',
+    'ได้รับมอบหมาย ' || new.code,
+    left(new.target_department || ' · ' || new.subject, 500)
+  );
+
+  return new;
+end;
+$$;
+
 create or replace function private.notify_new_it_request_message()
 returns trigger
 language plpgsql
@@ -146,11 +203,21 @@ as $$
 declare
   request_code text;
   request_owner_id uuid;
+  request_target_department text;
+  request_assigned_to uuid;
   message_preview text;
-  sender_is_admin boolean;
+  sender_is_handler boolean;
 begin
-  select request.code, request.requester_user_id
-  into request_code, request_owner_id
+  select
+    request.code,
+    request.requester_user_id,
+    request.target_department,
+    request.assigned_to
+  into
+    request_code,
+    request_owner_id,
+    request_target_department,
+    request_assigned_to
   from public.it_requests as request
   where request.id = new.request_id;
 
@@ -167,10 +234,11 @@ begin
     select 1
     from public.profiles as profile
     where profile.id = new.sender_id
-      and profile.role = 'admin'
-  ) into sender_is_admin;
+      and profile.role in ('super_admin', 'admin')
+  ) or request_assigned_to is not distinct from new.sender_id
+  into sender_is_handler;
 
-  if sender_is_admin then
+  if sender_is_handler then
     if request_owner_id is not null
        and request_owner_id is distinct from new.sender_id then
       insert into public.notifications (
@@ -186,7 +254,7 @@ begin
         new.request_id,
         new.sender_id,
         'message_received',
-        'ฝ่าย IT ตอบกลับ ' || request_code,
+        request_target_department || ' ตอบกลับ ' || request_code,
         message_preview
       );
     end if;
@@ -200,15 +268,25 @@ begin
       body
     )
     select
-      profile.id,
+      recipient.user_id,
       new.request_id,
       new.sender_id,
       'message_received',
       'ข้อความใหม่ ' || request_code,
       left(new.sender_email || ' · ' || message_preview, 500)
-    from public.profiles as profile
-    where profile.role = 'admin'
-      and profile.id is distinct from new.sender_id;
+    from (
+      select profile.id as user_id
+      from public.profiles as profile
+      where private.can_access_department(
+        request_target_department,
+        'requests.view',
+        profile.id
+      )
+      union
+      select request_assigned_to
+      where request_assigned_to is not null
+    ) as recipient
+    where recipient.user_id is distinct from new.sender_id;
   end if;
 
   return new;
@@ -217,6 +295,7 @@ $$;
 
 revoke all on function private.notify_new_it_request() from public;
 revoke all on function private.notify_it_request_status_changed() from public;
+revoke all on function private.notify_it_request_assigned() from public;
 revoke all on function private.notify_new_it_request_message() from public;
 
 drop trigger if exists notify_new_it_request on public.it_requests;
@@ -228,6 +307,11 @@ drop trigger if exists notify_it_request_status_changed on public.it_requests;
 create trigger notify_it_request_status_changed
 after update of status on public.it_requests
 for each row execute function private.notify_it_request_status_changed();
+
+drop trigger if exists notify_it_request_assigned on public.it_requests;
+create trigger notify_it_request_assigned
+after update of assigned_to on public.it_requests
+for each row execute function private.notify_it_request_assigned();
 
 drop trigger if exists notify_new_it_request_message
   on public.it_request_messages;

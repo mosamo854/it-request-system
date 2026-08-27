@@ -3,14 +3,18 @@ import { createDepartment } from "../services/departmentService";
 import {
   createManagedUser,
   getProfiles,
+  manageAdminAccess,
   updateManagedUser,
 } from "../services/profileService";
 import type { Department } from "../types/department";
 import type {
   CreateManagedUserInput,
+  ManageAdminAccessInput,
   UpdateManagedUserInput,
   UserProfile,
 } from "../types/profile";
+import { hasPermission } from "../types/profile";
+import AdminAccessDialog from "./AdminAccessDialog";
 import EditUserDialog from "./EditUserDialog";
 
 interface UserManagementPageProps {
@@ -63,6 +67,17 @@ export default function UserManagementPage({
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [editError, setEditError] = useState("");
   const [editSuccess, setEditSuccess] = useState("");
+  const [accessUser, setAccessUser] = useState<UserProfile | null>(null);
+  const [isSavingAccess, setIsSavingAccess] = useState(false);
+  const [accessError, setAccessError] = useState("");
+
+  const isSuperAdmin = currentProfile.role === "super_admin";
+  const canCreateUsers = hasPermission(currentProfile, "users.create");
+  const canUpdateUsers = hasPermission(currentProfile, "users.update");
+  const canCreateDepartments = hasPermission(
+    currentProfile,
+    "departments.create",
+  );
 
   async function loadUsers() {
     setIsLoading(true);
@@ -94,6 +109,7 @@ export default function UserManagementPage({
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canCreateUsers) return;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const password = String(form.get("password") ?? "");
@@ -130,6 +146,7 @@ export default function UserManagementPage({
 
   async function handleCreateDepartment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canCreateDepartments) return;
     setDepartmentError("");
     setDepartmentSuccess("");
     setIsCreatingDepartment(true);
@@ -147,7 +164,7 @@ export default function UserManagementPage({
   }
 
   function openEditUser(user: UserProfile) {
-    if (user.role !== "user") return;
+    if (user.role !== "user" || !canUpdateUsers) return;
     setEditError("");
     setEditSuccess("");
     setEditingUser(user);
@@ -176,22 +193,58 @@ export default function UserManagementPage({
     }
   }
 
+  function openAccessDialog(user: UserProfile) {
+    if (
+      !isSuperAdmin ||
+      user.id === currentProfile.id ||
+      user.role === "super_admin"
+    ) {
+      return;
+    }
+    setAccessError("");
+    setAccessUser(user);
+  }
+
+  function closeAccessDialog() {
+    if (isSavingAccess) return;
+    setAccessUser(null);
+    setAccessError("");
+  }
+
+  async function handleManageAccess(input: ManageAdminAccessInput) {
+    setAccessError("");
+    setIsSavingAccess(true);
+    try {
+      await manageAdminAccess(input);
+      await loadUsers();
+      setAccessUser(null);
+      setEditSuccess("บันทึกบทบาทและสิทธิ์ของ Admin สำเร็จแล้ว");
+    } catch (error) {
+      setAccessError(getErrorMessage(error));
+    } finally {
+      setIsSavingAccess(false);
+    }
+  }
+
   const normalUsers = users.filter((user) => user.role === "user").length;
   const admins = users.filter((user) => user.role === "admin").length;
-  const userDepartments = departments.filter(
-    (department) => department.name !== "ฝ่าย IT",
-  );
+  const superAdmins = users.filter(
+    (user) => user.role === "super_admin",
+  ).length;
+  const userDepartments = departments;
 
   return (
     <section className="content subpage-content" id="users-top">
       <header className="subpage-header">
-        <div className="mobile-brand">IT</div>
+        <div className="mobile-brand">RC</div>
         <div>
           <span className="eyebrow">User Administration</span>
           <h1>จัดการผู้ใช้งาน</h1>
-          <p>สร้างบัญชี แก้ไขข้อมูล และจัดกลุ่มพนักงานตามแผนก</p>
+          <p>สร้างบัญชี แก้ไขข้อมูล และกำหนดสิทธิ์ตามหน้าที่</p>
         </div>
-        <span className="admin-role-pill">ผู้ดูแล: {currentProfile.fullName}</span>
+        <span className="admin-role-pill">
+          {isSuperAdmin ? "Super Admin" : "Admin"}: {currentProfile.fullName}
+        </span>
       </header>
 
       <section className="um-summary-grid" aria-label="สรุปบัญชีผู้ใช้งาน">
@@ -204,8 +257,8 @@ export default function UserManagementPage({
           <div><small>ผู้ใช้งานทั่วไป</small><strong>{normalUsers}</strong><span>บัญชี User</span></div>
         </article>
         <article className="um-summary-card um-summary-purple">
-          <span className="um-summary-icon" aria-hidden="true">IT</span>
-          <div><small>ผู้ดูแลฝ่าย IT</small><strong>{admins}</strong><span>บัญชี Admin</span></div>
+          <span className="um-summary-icon" aria-hidden="true">AD</span>
+          <div><small>ผู้ดูแลระบบ</small><strong>{admins + superAdmins}</strong><span>Admin {admins} · Super {superAdmins}</span></div>
         </article>
         <article className="um-summary-card um-summary-orange">
           <span className="um-summary-icon" aria-hidden="true">D</span>
@@ -213,7 +266,7 @@ export default function UserManagementPage({
         </article>
       </section>
 
-      <section className="um-department-card">
+      {canCreateDepartments && <section className="um-department-card">
         <header>
           <div className="um-section-icon" aria-hidden="true">D</div>
           <div>
@@ -248,10 +301,10 @@ export default function UserManagementPage({
 
         {departmentError && <p className="notice error-notice">{departmentError}</p>}
         {departmentSuccess && <p className="notice success-notice">{departmentSuccess}</p>}
-      </section>
+      </section>}
 
-      <section className="um-management-layout">
-        <article className="um-create-card">
+      <section className={canCreateUsers ? "um-management-layout" : "um-management-layout directory-only"}>
+        {canCreateUsers && <article className="um-create-card">
           <header className="um-card-header">
             <div className="um-section-icon um-section-icon-green" aria-hidden="true">+</div>
             <div>
@@ -318,7 +371,7 @@ export default function UserManagementPage({
               {isCreating ? "กำลังสร้างบัญชี…" : "+ สร้างบัญชี User"}
             </button>
           </form>
-        </article>
+        </article>}
 
         <article className="um-directory-card">
           <header className="um-directory-header">
@@ -363,7 +416,7 @@ export default function UserManagementPage({
             {filteredUsers.map((user) => (
               <article className="um-user-row" key={user.id}>
                 <div className="um-user-identity">
-                  <span className={`um-avatar ${user.role === "admin" ? "um-avatar-admin" : ""}`}>
+                  <span className={`um-avatar ${user.role !== "user" ? "um-avatar-admin" : ""}`}>
                     {user.fullName.trim().charAt(0).toUpperCase() || "U"}
                   </span>
                   <div>
@@ -380,7 +433,11 @@ export default function UserManagementPage({
 
                 <div>
                   <span className={`um-role-badge um-role-${user.role}`}>
-                    {user.role === "admin" ? "Admin · IT" : "User"}
+                    {user.role === "super_admin"
+                      ? "Super Admin"
+                      : user.role === "admin"
+                        ? `Admin · ${user.permissions.length} สิทธิ์`
+                        : "User"}
                   </span>
                 </div>
 
@@ -390,7 +447,7 @@ export default function UserManagementPage({
                 </time>
 
                 <div className="um-row-action">
-                  {user.role === "user" ? (
+                  {user.role === "user" && canUpdateUsers && (
                     <button type="button" onClick={() => openEditUser(user)}>
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z" />
@@ -398,8 +455,22 @@ export default function UserManagementPage({
                       </svg>
                       แก้ไข
                     </button>
-                  ) : (
-                    <span title="บัญชี Admin แก้ไขจากหน้านี้ไม่ได้">บัญชีหลัก</span>
+                  )}
+                  {isSuperAdmin &&
+                    user.role !== "super_admin" &&
+                    user.id !== currentProfile.id && (
+                      <button
+                        className="um-permission-button"
+                        type="button"
+                        onClick={() => openAccessDialog(user)}
+                      >
+                        {user.role === "admin" ? "กำหนดสิทธิ์" : "แต่งตั้ง Admin"}
+                      </button>
+                    )}
+                  {user.role === "super_admin" && (
+                    <span title="ป้องกันการแก้สิทธิ์ Super Admin ผ่านหน้าเว็บ">
+                      บัญชีหลัก
+                    </span>
                   )}
                 </div>
               </article>
@@ -431,6 +502,17 @@ export default function UserManagementPage({
           errorMessage={editError}
           onClose={closeEditUser}
           onSubmit={handleUpdateUser}
+        />
+      )}
+
+      {accessUser && (
+        <AdminAccessDialog
+          key={accessUser.id}
+          user={accessUser}
+          isSaving={isSavingAccess}
+          errorMessage={accessError}
+          onClose={closeAccessDialog}
+          onSubmit={handleManageAccess}
         />
       )}
     </section>

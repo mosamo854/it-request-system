@@ -34,26 +34,26 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <a className="login-brand" href="/" aria-label="IT Desk">
-          <span className="brand-mark">IT</span>
+        <a className="login-brand" href="/" aria-label="Request Center">
+          <span className="brand-mark">RC</span>
           <span>
-            <strong>IT Desk</strong>
-            <small>Request Center</small>
+            <strong>Request Center</strong>
+            <small>Internal Services</small>
           </span>
         </a>
 
         <div className="login-brand-copy">
           <span className="live-pill">
-            <i /> IT Support พร้อมให้บริการ
+            <i /> ระบบคำขอกลางพร้อมให้บริการ
           </span>
           <h1>
-            ทุกปัญหา IT
+            ทุกคำขอภายใน
             <br />
             เริ่มแก้ได้จากที่นี่
           </h1>
           <p>
-            ส่งคำขอ ติดตามความคืบหน้า และรับความช่วยเหลือจากทีม IT
-            ผ่านระบบกลางขององค์กร
+            ส่งคำขอไปยังแผนกที่เกี่ยวข้อง ติดตามความคืบหน้า
+            และพูดคุยผ่านระบบกลางขององค์กร
           </p>
         </div>
 
@@ -71,20 +71,20 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <small className="login-copyright">© 2026 IT Desk · Internal use only</small>
+        <small className="login-copyright">© 2026 Request Center · Internal use only</small>
       </section>
 
       <section className="login-form-panel">
         <div className="login-form-wrap">
           <div className="login-mobile-logo">
-            <span className="brand-mark">IT</span>
-            <strong>IT Desk</strong>
+            <span className="brand-mark">RC</span>
+            <strong>Request Center</strong>
           </div>
 
           <span className="eyebrow">ยินดีต้อนรับกลับ</span>
           <h2>เข้าสู่ระบบ</h2>
           <p className="login-subtitle">
-            ใช้อีเมลและรหัสผ่านที่ผู้ดูแลฝ่าย IT สร้างให้
+            ใช้อีเมลและรหัสผ่านที่ผู้ดูแลระบบสร้างให้
           </p>
 
           <form className="login-form" onSubmit={handleLogin}>
@@ -144,7 +144,7 @@ export default function LoginPage() {
             <span>i</span>
             <p>
               <strong>ยังไม่มีบัญชี?</strong>
-              ติดต่อผู้ดูแลฝ่าย IT เพื่อสร้างบัญชีให้ในระบบ
+              ติดต่อผู้ดูแลระบบเพื่อสร้างบัญชีให้
             </p>
           </div>
         </div>

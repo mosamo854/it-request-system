@@ -23,6 +23,7 @@ interface StatisticsPageProps {
   tickets: Ticket[];
   isLoading: boolean;
   errorMessage: string;
+  canExport: boolean;
 }
 
 const BANGKOK_OFFSET = 7 * 60 * 60 * 1000;
@@ -202,6 +203,7 @@ export default function StatisticsPage({
   tickets,
   isLoading,
   errorMessage,
+  canExport,
 }: StatisticsPageProps) {
   const [mode, setMode] = useState<PeriodMode>("day");
 
@@ -242,7 +244,10 @@ export default function StatisticsPage({
     const counts = new Map<string, number>();
     tickets.forEach((ticket) => {
       if (!keys.has(getPeriodKey(ticket.createdAt, mode))) return;
-      counts.set(ticket.department, (counts.get(ticket.department) ?? 0) + 1);
+      counts.set(
+        ticket.targetDepartment,
+        (counts.get(ticket.targetDepartment) ?? 0) + 1,
+      );
     });
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [mode, periods, tickets]);
@@ -263,7 +268,7 @@ export default function StatisticsPage({
 
   function handleExportReport() {
     const rows: Array<Array<string | number>> = [
-      ["รายงานสถิติคำขอ IT"],
+      ["รายงานสถิติคำขอภายในองค์กร"],
       ["ช่วงรายงาน", rangeLabel],
       ["ส่งออกเมื่อ", formatExportDate(new Date())],
       ["คำขอทั้งหมด", summary.total],
@@ -295,11 +300,13 @@ export default function StatisticsPage({
         "วันที่แจ้ง",
         "ชื่อผู้แจ้ง",
         "อีเมล",
-        "แผนก",
-        "ประเภทปัญหา",
+        "แผนกผู้ส่ง",
+        "แผนกปลายทาง",
+        "ประเภทคำขอ",
         "ความสำคัญ",
         "หัวข้อ",
         "สถานะ",
+        "ผู้รับผิดชอบ",
         "คลังสำรอง",
       ],
       ...rangeTickets.map((ticket) => [
@@ -307,25 +314,27 @@ export default function StatisticsPage({
         formatExportDate(ticket.createdAt),
         ticket.requesterName,
         ticket.requesterEmail,
-        ticket.department,
+        ticket.requesterDepartment,
+        ticket.targetDepartment,
         ticket.category,
         priorityLabels[ticket.priority],
         ticket.subject,
         statusLabels[ticket.status],
+        ticket.assignedToName ?? "ยังไม่ได้มอบหมาย",
         ticket.archivedAt ? "เก็บสำรองแล้ว" : "รายการปัจจุบัน",
       ]),
     ];
 
-    downloadCsv(makeExportFilename(`it-report-${mode}`), rows);
+    downloadCsv(makeExportFilename(`request-report-${mode}`), rows);
   }
 
   return (
     <section className="content subpage-content" id="statistics-top">
       <header className="subpage-header">
-        <div className="mobile-brand">IT</div>
+        <div className="mobile-brand">RC</div>
         <div>
           <span className="eyebrow">Analytics</span>
-          <h1>สถิติคำขอ IT</h1>
+          <h1>สถิติคำขอภายในองค์กร</h1>
           <p>ติดตามปริมาณงานและผลการดำเนินงานตามช่วงเวลา</p>
         </div>
         <div className="statistics-header-actions">
@@ -344,14 +353,14 @@ export default function StatisticsPage({
               </button>
             ))}
           </div>
-          <button
+          {canExport && <button
             className="export-report-button"
             type="button"
             disabled={isLoading}
             onClick={handleExportReport}
           >
             <span>⇩</span> Export รายงาน
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -385,7 +394,7 @@ export default function StatisticsPage({
           <div className="analytics-card-heading">
             <div>
               <span className="eyebrow">Departments</span>
-              <h2>แยกตามแผนก</h2>
+              <h2>แยกตามแผนกปลายทาง</h2>
             </div>
           </div>
           <div className="department-bars">

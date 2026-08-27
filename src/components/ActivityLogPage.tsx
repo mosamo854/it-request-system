@@ -12,6 +12,8 @@ import type { ActivityAction, ActivityLog } from "../types/activityLog";
 
 interface ActivityLogPageProps {
   onOpenRequest: (requestId: string) => void;
+  canExport: boolean;
+  canOpenRequests: boolean;
 }
 
 const actionMeta: Record<
@@ -19,6 +21,7 @@ const actionMeta: Record<
   { label: string; icon: string; tone: string }
 > = {
   request_created: { label: "สร้างคำขอ", icon: "+", tone: "blue" },
+  request_assigned: { label: "มอบหมายงาน", icon: "→", tone: "cyan" },
   status_changed: { label: "เปลี่ยนสถานะ", icon: "↻", tone: "purple" },
   request_archived: { label: "เก็บสำรอง", icon: "▣", tone: "orange" },
   request_restored: { label: "กู้คืนคำขอ", icon: "↥", tone: "green" },
@@ -27,11 +30,13 @@ const actionMeta: Record<
   department_created: { label: "เพิ่มแผนก", icon: "◇", tone: "cyan" },
   user_created: { label: "เพิ่มผู้ใช้", icon: "♙", tone: "green" },
   user_updated: { label: "แก้ไขผู้ใช้", icon: "✎", tone: "purple" },
+  admin_access_updated: { label: "กำหนดสิทธิ์ Admin", icon: "◆", tone: "purple" },
 };
 
 const actionOptions: Array<["all" | ActivityAction, string]> = [
   ["all", "ทุกกิจกรรม"],
   ["request_created", "สร้างคำขอ"],
+  ["request_assigned", "มอบหมายงาน"],
   ["status_changed", "เปลี่ยนสถานะ"],
   ["request_archived", "เก็บสำรอง"],
   ["request_restored", "กู้คืนคำขอ"],
@@ -40,6 +45,7 @@ const actionOptions: Array<["all" | ActivityAction, string]> = [
   ["department_created", "เพิ่มแผนก"],
   ["user_created", "เพิ่มผู้ใช้"],
   ["user_updated", "แก้ไขผู้ใช้"],
+  ["admin_access_updated", "กำหนดสิทธิ์ Admin"],
 ];
 
 function getErrorMessage(error: unknown) {
@@ -81,6 +87,8 @@ function activityMatchesQuery(activity: ActivityLog, query: string) {
 
 export default function ActivityLogPage({
   onOpenRequest,
+  canExport,
+  canOpenRequests,
 }: ActivityLogPageProps) {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [query, setQuery] = useState("");
@@ -171,13 +179,13 @@ export default function ActivityLogPage({
         activity.entityType,
       ]),
     ];
-    downloadCsv(makeExportFilename("it-activity-log"), rows);
+    downloadCsv(makeExportFilename("request-activity-log"), rows);
   }
 
   return (
     <section className="content subpage-content activity-page" id="activity-top">
       <header className="subpage-header activity-page-header">
-        <div className="mobile-brand">IT</div>
+        <div className="mobile-brand">RC</div>
         <div>
           <span className="eyebrow">Audit Trail</span>
           <h1>ประวัติการดำเนินการ</h1>
@@ -192,14 +200,14 @@ export default function ActivityLogPage({
           >
             {isRefreshing ? "กำลังโหลด…" : "↻ โหลดใหม่"}
           </button>
-          <button
+          {canExport && <button
             className="export-report-button"
             type="button"
             disabled={filteredActivities.length === 0}
             onClick={handleExport}
           >
             <span>⇩</span> Export CSV
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -289,7 +297,7 @@ export default function ActivityLogPage({
                     <time dateTime={activity.createdAt}>
                       {formatExportDate(activity.createdAt)}
                     </time>
-                    {activity.requestId && (
+                    {canOpenRequests && activity.requestId && (
                       <button
                         type="button"
                         onClick={() => onOpenRequest(activity.requestId!)}
