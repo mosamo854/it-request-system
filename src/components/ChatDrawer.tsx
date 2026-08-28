@@ -1,5 +1,9 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { validateImage } from "../services/imageService";
+import {
+  ATTACHMENT_ACCEPT,
+  isImageAttachment,
+  validateAttachment,
+} from "../services/attachmentService";
 import {
   getMessages,
   sendMessage,
@@ -7,7 +11,7 @@ import {
 } from "../services/messageService";
 import type { ChatMessage } from "../types/message";
 import type { Ticket } from "../types/ticket";
-import AttachmentImage from "./AttachmentImage";
+import AttachmentFile from "./AttachmentFile";
 
 interface ChatDrawerProps {
   ticket: Ticket;
@@ -46,9 +50,10 @@ export default function ChatDrawer({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [imagePreview, setImagePreview] = useState("");
+  const [attachmentPreview, setAttachmentPreview] = useState("");
+  const [attachmentName, setAttachmentName] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,24 +92,26 @@ export default function ChatDrawer({
 
   useEffect(
     () => () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      if (attachmentPreview) URL.revokeObjectURL(attachmentPreview);
     },
-    [imagePreview],
+    [attachmentPreview],
   );
 
-  function clearSelectedImage() {
-    if (imageInputRef.current) imageInputRef.current.value = "";
-    setImagePreview((current) => {
+  function clearSelectedAttachment() {
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+    setAttachmentName("");
+    setAttachmentPreview((current) => {
       if (current) URL.revokeObjectURL(current);
       return "";
     });
   }
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     setErrorMessage("");
 
-    setImagePreview((current) => {
+    setAttachmentName("");
+    setAttachmentPreview((current) => {
       if (current) URL.revokeObjectURL(current);
       return "";
     });
@@ -112,8 +119,11 @@ export default function ChatDrawer({
     if (!file) return;
 
     try {
-      validateImage(file);
-      setImagePreview(URL.createObjectURL(file));
+      validateAttachment(file);
+      setAttachmentName(file.name);
+      if (isImageAttachment(file.type, file.name)) {
+        setAttachmentPreview(URL.createObjectURL(file));
+      }
     } catch (error) {
       event.currentTarget.value = "";
       setErrorMessage(getErrorMessage(error));
@@ -125,10 +135,12 @@ export default function ChatDrawer({
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const body = String(form.get("message") ?? "").trim();
-    const imageEntry = form.get("image");
-    const image =
-      imageEntry instanceof File && imageEntry.size > 0 ? imageEntry : undefined;
-    if (!body && !image) return;
+    const attachmentEntry = form.get("attachment");
+    const attachment =
+      attachmentEntry instanceof File && attachmentEntry.size > 0
+        ? attachmentEntry
+        : undefined;
+    if (!body && !attachment) return;
 
     setErrorMessage("");
     setIsSending(true);
@@ -139,7 +151,7 @@ export default function ChatDrawer({
         senderId: currentUserId,
         senderEmail: currentUserEmail,
         body,
-        image,
+        attachment,
       });
       setMessages((current) =>
         current.some((item) => item.id === message.id)
@@ -147,7 +159,7 @@ export default function ChatDrawer({
           : [...current, message],
       );
       formElement.reset();
-      clearSelectedImage();
+      clearSelectedAttachment();
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     } finally {
@@ -214,10 +226,12 @@ export default function ChatDrawer({
                   <small>
                     {isOwnMessage ? "คุณ" : message.senderEmail.split("@")[0]}
                   </small>
-                  {message.imagePath && (
-                    <AttachmentImage
-                      path={message.imagePath}
-                      alt="รูปภาพในข้อความแชต"
+                  {message.attachmentPath && (
+                    <AttachmentFile
+                      path={message.attachmentPath}
+                      name={message.attachmentName}
+                      mimeType={message.attachmentMimeType}
+                      size={message.attachmentSize}
                       className="message-image"
                     />
                   )}
@@ -233,30 +247,43 @@ export default function ChatDrawer({
         <footer className="chat-compose">
           {errorMessage && <p className="chat-error">{errorMessage}</p>}
           <form onSubmit={handleSubmit}>
-            {imagePreview && (
-              <div className="chat-image-preview">
-                <img src={imagePreview} alt="ตัวอย่างรูปที่จะส่งในแชต" />
-                <button type="button" onClick={clearSelectedImage} aria-label="ลบรูป">
+            {attachmentName && (
+              <div
+                className={`chat-image-preview ${
+                  attachmentPreview ? "" : "document"
+                }`}
+              >
+                {attachmentPreview ? (
+                  <img src={attachmentPreview} alt="ตัวอย่างไฟล์ที่จะส่งในแชต" />
+                ) : (
+                  <i className="selected-file-icon">FILE</i>
+                )}
+                <strong>{attachmentName}</strong>
+                <button
+                  type="button"
+                  onClick={clearSelectedAttachment}
+                  aria-label="ลบไฟล์"
+                >
                   ×
                 </button>
               </div>
             )}
             <div className="chat-compose-row">
-              <label className="chat-attach-button" title="แนบรูปภาพ">
+              <label className="chat-attach-button" title="แนบไฟล์">
                 <span>＋</span>
                 <input
-                  ref={imageInputRef}
-                  name="image"
+                  ref={attachmentInputRef}
+                  name="attachment"
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  onChange={handleImageChange}
+                  accept={ATTACHMENT_ACCEPT}
+                  onChange={handleAttachmentChange}
                 />
               </label>
               <textarea
                 name="message"
                 rows={2}
                 maxLength={2000}
-                placeholder="พิมพ์ข้อความหรือแนบรูป…"
+                placeholder="พิมพ์ข้อความหรือแนบไฟล์…"
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -269,7 +296,9 @@ export default function ChatDrawer({
               </button>
             </div>
           </form>
-          <small>แนบรูปได้ไม่เกิน 5 MB · Enter เพื่อส่ง · Shift + Enter เพื่อขึ้นบรรทัดใหม่</small>
+          <small>
+            แนบไฟล์ได้ไม่เกิน 10 MB · ระบบจะตรวจความปลอดภัยก่อนจัดเก็บ
+          </small>
         </footer>
       </aside>
     </div>

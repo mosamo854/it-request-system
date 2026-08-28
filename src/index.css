@@ -851,6 +851,65 @@ textarea:focus {
   object-fit: cover;
 }
 
+.attachment-file-card {
+  display: flex;
+  min-width: min(330px, 100%);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+  color: #34445b;
+  background: #f8fafc;
+  text-decoration: none;
+}
+
+.attachment-file-card:hover {
+  border-color: #a9c9f4;
+  background: #f2f7ff;
+}
+
+.attachment-file-card > span:first-child,
+.selected-file-icon {
+  display: grid;
+  min-width: 45px;
+  height: 45px;
+  place-items: center;
+  border-radius: 9px;
+  color: #246ac9;
+  background: #e5f0ff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.attachment-file-card > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.attachment-file-card strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-file-card small {
+  color: #8a96a7;
+  font-size: 10px;
+}
+
+.attachment-file-card > i {
+  margin-left: auto;
+  color: #246ac9;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .attachment-loading,
 .attachment-error {
   display: grid;
@@ -872,6 +931,12 @@ textarea:focus {
   width: min(250px, 100%);
   height: 128px;
   margin-top: 10px;
+}
+
+.attachment-file-card.ticket-attachment {
+  width: min(390px, 100%);
+  height: auto;
+  min-height: 65px;
 }
 
 .ticket-meta {
@@ -1404,6 +1469,12 @@ textarea:focus {
   border-color: #d9e1eb;
 }
 
+.attachment-file-card.message-image {
+  width: min(330px, 65vw);
+  height: auto;
+  min-height: 64px;
+}
+
 .chat-message.own .message-image {
   border-color: #a9caf7;
 }
@@ -1550,6 +1621,23 @@ textarea:focus {
   color: white;
   background: #16243cbd;
   font-size: 18px;
+}
+
+.chat-image-preview.document {
+  display: flex;
+  width: min(330px, 100%);
+  height: 62px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 38px 8px 8px;
+}
+
+.chat-image-preview.document strong {
+  overflow: hidden;
+  color: #47566b;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-compose > small {
@@ -1758,6 +1846,23 @@ textarea:focus {
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.request-image-preview.document {
+  display: flex;
+  width: min(420px, 100%);
+  height: 68px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 76px 10px 10px;
+}
+
+.request-image-preview.document b {
+  overflow: hidden;
+  color: #47566b;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .full-width {

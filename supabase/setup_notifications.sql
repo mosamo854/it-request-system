@@ -227,7 +227,7 @@ begin
 
   message_preview := case
     when nullif(trim(new.body), '') is not null then left(trim(new.body), 360)
-    else 'ส่งรูปภาพในห้องแชต'
+    else 'ส่งไฟล์แนบในห้องแชต'
   end;
 
   select exists (

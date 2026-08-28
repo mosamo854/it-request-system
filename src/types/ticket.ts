@@ -13,7 +13,10 @@ export interface Ticket {
   priority: TicketPriority;
   subject: string;
   detail: string;
-  imagePath: string | null;
+  attachmentPath: string | null;
+  attachmentName: string | null;
+  attachmentMimeType: string | null;
+  attachmentSize: number | null;
   status: TicketStatus;
   assignedTo: string | null;
   assignedToName: string | null;

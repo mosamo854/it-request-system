@@ -34,7 +34,7 @@ const permissionGroups: Array<{
     permissions: [
       ["archive.view", "ดูรายการในคลังสำรอง"],
       ["archive.restore", "กู้คืนคำขอ"],
-      ["archive.delete", "ลบคำขอ แชต และรูปภาพถาวร"],
+      ["archive.delete", "ลบคำขอ แชต และไฟล์แนบถาวร"],
     ],
   },
   {

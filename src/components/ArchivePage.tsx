@@ -92,7 +92,7 @@ export default function ArchivePage({
         <div>
           <span className="eyebrow">Backup Archive</span>
           <h1>คลังสำรองคำขอ</h1>
-          <p>กู้คืนได้ภายใน 7 วัน ก่อนระบบลบคำขอ แชต และรูปภาพถาวร</p>
+          <p>กู้คืนได้ภายใน 7 วัน ก่อนระบบลบคำขอ แชต และไฟล์แนบถาวร</p>
         </div>
         <span className="archive-total">{tickets.length} รายการ</span>
       </header>

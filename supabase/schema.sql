@@ -353,6 +353,13 @@ create table if not exists public.it_requests (
   subject text not null check (char_length(subject) between 3 and 120),
   detail text not null check (char_length(detail) between 3 and 3000),
   image_path text,
+  attachment_name text check (char_length(attachment_name) between 1 and 255),
+  attachment_mime_type text check (
+    char_length(attachment_mime_type) between 1 and 150
+  ),
+  attachment_size integer check (
+    attachment_size between 1 and 10485760
+  ),
   status text not null default 'waiting' check (
     status in ('waiting', 'in_progress', 'done')
   ),
@@ -379,6 +386,45 @@ alter table public.it_requests
 
 alter table public.it_requests
   add column if not exists image_path text;
+
+alter table public.it_requests
+  add column if not exists attachment_name text;
+
+alter table public.it_requests
+  add column if not exists attachment_mime_type text;
+
+alter table public.it_requests
+  add column if not exists attachment_size integer;
+
+alter table public.it_requests
+  drop constraint if exists it_requests_attachment_name_check;
+
+alter table public.it_requests
+  add constraint it_requests_attachment_name_check
+  check (
+    attachment_name is null
+    or char_length(attachment_name) between 1 and 255
+  );
+
+alter table public.it_requests
+  drop constraint if exists it_requests_attachment_mime_type_check;
+
+alter table public.it_requests
+  add constraint it_requests_attachment_mime_type_check
+  check (
+    attachment_mime_type is null
+    or char_length(attachment_mime_type) between 1 and 150
+  );
+
+alter table public.it_requests
+  drop constraint if exists it_requests_attachment_size_check;
+
+alter table public.it_requests
+  add constraint it_requests_attachment_size_check
+  check (
+    attachment_size is null
+    or attachment_size between 1 and 10485760
+  );
 
 alter table public.it_requests
   add column if not exists requester_user_id uuid;
@@ -641,6 +687,13 @@ create table if not exists public.it_request_messages (
   sender_email text not null,
   body text not null default '',
   image_path text,
+  attachment_name text check (char_length(attachment_name) between 1 and 255),
+  attachment_mime_type text check (
+    char_length(attachment_mime_type) between 1 and 150
+  ),
+  attachment_size integer check (
+    attachment_size between 1 and 10485760
+  ),
   created_at timestamptz not null default now()
 );
 
@@ -648,6 +701,45 @@ create table if not exists public.it_request_messages (
 -- are valid while keeping text messages limited to 2,000 characters.
 alter table public.it_request_messages
   add column if not exists image_path text;
+
+alter table public.it_request_messages
+  add column if not exists attachment_name text;
+
+alter table public.it_request_messages
+  add column if not exists attachment_mime_type text;
+
+alter table public.it_request_messages
+  add column if not exists attachment_size integer;
+
+alter table public.it_request_messages
+  drop constraint if exists it_request_messages_attachment_name_check;
+
+alter table public.it_request_messages
+  add constraint it_request_messages_attachment_name_check
+  check (
+    attachment_name is null
+    or char_length(attachment_name) between 1 and 255
+  );
+
+alter table public.it_request_messages
+  drop constraint if exists it_request_messages_attachment_mime_type_check;
+
+alter table public.it_request_messages
+  add constraint it_request_messages_attachment_mime_type_check
+  check (
+    attachment_mime_type is null
+    or char_length(attachment_mime_type) between 1 and 150
+  );
+
+alter table public.it_request_messages
+  drop constraint if exists it_request_messages_attachment_size_check;
+
+alter table public.it_request_messages
+  add constraint it_request_messages_attachment_size_check
+  check (
+    attachment_size is null
+    or attachment_size between 1 and 10485760
+  );
 
 alter table public.it_request_messages
   alter column body set default '';
@@ -726,8 +818,21 @@ values (
   'it-request-images',
   'it-request-images',
   false,
-  5242880,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  10485760,
+  array[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain',
+    'text/csv',
+    'text/markdown',
+    'application/json'
+  ]
 )
 on conflict (id) do update
 set public = excluded.public,
@@ -889,8 +994,19 @@ with check (
       and profile.role = 'user'
   )
   and (
-    image_path is null
-    or split_part(image_path, '/', 1) = auth.uid()::text
+    (
+      image_path is null
+      and attachment_name is null
+      and attachment_mime_type is null
+      and attachment_size is null
+    )
+    or (
+      image_path is not null
+      and split_part(image_path, '/', 1) = auth.uid()::text
+      and attachment_name is not null
+      and attachment_mime_type is not null
+      and attachment_size is not null
+    )
   )
 );
 
@@ -1000,8 +1116,19 @@ with check (
   )
   and (char_length(trim(body)) > 0 or image_path is not null)
   and (
-    image_path is null
-    or split_part(image_path, '/', 1) = auth.uid()::text
+    (
+      image_path is null
+      and attachment_name is null
+      and attachment_mime_type is null
+      and attachment_size is null
+    )
+    or (
+      image_path is not null
+      and split_part(image_path, '/', 1) = auth.uid()::text
+      and attachment_name is not null
+      and attachment_mime_type is not null
+      and attachment_size is not null
+    )
   )
 );
 
@@ -1022,23 +1149,9 @@ using (
 
 drop policy if exists "Authenticated users can upload IT request images"
   on storage.objects;
-create policy "Authenticated users can upload IT request images"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'it-request-images'
-  and (storage.foldername(name))[1] = auth.uid()::text
-);
 
 drop policy if exists "Users can delete their own IT request images"
   on storage.objects;
-create policy "Users can delete their own IT request images"
-on storage.objects for delete
-to authenticated
-using (
-  bucket_id = 'it-request-images'
-  and (storage.foldername(name))[1] = auth.uid()::text
-);
 
 -- Add the messages table to Supabase Realtime once. The DO block keeps this
 -- script safe to rerun without a "table is already member" error.

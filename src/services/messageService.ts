@@ -1,6 +1,9 @@
 import { supabase } from "../lib/supabase";
 import type { ChatMessage } from "../types/message";
-import { removeImage, uploadImage } from "./imageService";
+import {
+  removeAttachment,
+  uploadAttachment,
+} from "./attachmentService";
 
 interface MessageRow {
   id: string;
@@ -9,6 +12,9 @@ interface MessageRow {
   sender_email: string;
   body: string;
   image_path: string | null;
+  attachment_name: string | null;
+  attachment_mime_type: string | null;
+  attachment_size: number | null;
   created_at: string;
 }
 
@@ -19,7 +25,10 @@ function mapMessage(row: MessageRow): ChatMessage {
     senderId: row.sender_id,
     senderEmail: row.sender_email,
     body: row.body,
-    imagePath: row.image_path ?? null,
+    attachmentPath: row.image_path ?? null,
+    attachmentName: row.attachment_name ?? null,
+    attachmentMimeType: row.attachment_mime_type ?? null,
+    attachmentSize: row.attachment_size ?? null,
     createdAt: row.created_at,
   };
 }
@@ -40,10 +49,10 @@ export async function sendMessage(input: {
   senderId: string;
   senderEmail: string;
   body: string;
-  image?: File;
+  attachment?: File;
 }): Promise<ChatMessage> {
-  const imagePath = input.image
-    ? await uploadImage(input.image, "messages")
+  const attachment = input.attachment
+    ? await uploadAttachment(input.attachment, "messages")
     : null;
   const { data, error } = await supabase
     .from("it_request_messages")
@@ -52,13 +61,18 @@ export async function sendMessage(input: {
       sender_id: input.senderId,
       sender_email: input.senderEmail,
       body: input.body.trim(),
-      image_path: imagePath,
+      image_path: attachment?.path ?? null,
+      attachment_name: attachment?.originalName ?? null,
+      attachment_mime_type: attachment?.mimeType ?? null,
+      attachment_size: attachment?.size ?? null,
     })
     .select("*")
     .single();
 
   if (error) {
-    if (imagePath) await removeImage(imagePath).catch(() => undefined);
+    if (attachment?.path) {
+      await removeAttachment(attachment.path).catch(() => undefined);
+    }
     throw error;
   }
   return mapMessage(data as MessageRow);

@@ -5,7 +5,10 @@ import type {
   TicketPriority,
   TicketStatus,
 } from "../types/ticket";
-import { removeImage, uploadImage } from "./imageService";
+import {
+  removeAttachment,
+  uploadAttachment,
+} from "./attachmentService";
 
 interface TicketRow {
   id: string;
@@ -20,6 +23,9 @@ interface TicketRow {
   subject: string;
   detail: string;
   image_path: string | null;
+  attachment_name: string | null;
+  attachment_mime_type: string | null;
+  attachment_size: number | null;
   status: TicketStatus;
   assigned_to: string | null;
   assigned_to_name: string | null;
@@ -44,7 +50,10 @@ function mapTicket(row: TicketRow): Ticket {
     priority: row.priority,
     subject: row.subject,
     detail: row.detail,
-    imagePath: row.image_path ?? null,
+    attachmentPath: row.image_path ?? null,
+    attachmentName: row.attachment_name ?? null,
+    attachmentMimeType: row.attachment_mime_type ?? null,
+    attachmentSize: row.attachment_size ?? null,
     status: row.status,
     assignedTo: row.assigned_to ?? null,
     assignedToName: row.assigned_to_name ?? null,
@@ -69,9 +78,11 @@ export async function getTickets(): Promise<Ticket[]> {
 
 export async function createTicket(
   input: CreateTicketInput,
-  image?: File,
+  attachmentFile?: File,
 ): Promise<Ticket> {
-  const imagePath = image ? await uploadImage(image, "requests") : null;
+  const attachment = attachmentFile
+    ? await uploadAttachment(attachmentFile, "requests")
+    : null;
   const { data, error } = await supabase
     .from("it_requests")
     .insert({
@@ -84,13 +95,18 @@ export async function createTicket(
       priority: input.priority,
       subject: input.subject.trim(),
       detail: input.detail.trim(),
-      image_path: imagePath,
+      image_path: attachment?.path ?? null,
+      attachment_name: attachment?.originalName ?? null,
+      attachment_mime_type: attachment?.mimeType ?? null,
+      attachment_size: attachment?.size ?? null,
     })
     .select("*")
     .single();
 
   if (error) {
-    if (imagePath) await removeImage(imagePath).catch(() => undefined);
+    if (attachment?.path) {
+      await removeAttachment(attachment.path).catch(() => undefined);
+    }
     throw error;
   }
   return mapTicket(data as TicketRow);

@@ -4,6 +4,9 @@ export interface ChatMessage {
   senderId: string;
   senderEmail: string;
   body: string;
-  imagePath: string | null;
+  attachmentPath: string | null;
+  attachmentName: string | null;
+  attachmentMimeType: string | null;
+  attachmentSize: number | null;
   createdAt: string;
 }

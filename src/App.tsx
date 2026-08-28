@@ -9,7 +9,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import ActivityLogPage from "./components/ActivityLogPage";
 import ArchivePage from "./components/ArchivePage";
-import AttachmentImage from "./components/AttachmentImage";
+import AttachmentFile from "./components/AttachmentFile";
 import ChatDrawer from "./components/ChatDrawer";
 import LoginPage from "./components/LoginPage";
 import NotificationCenter from "./components/NotificationCenter";
@@ -21,7 +21,11 @@ import {
   getAssignableMembers,
 } from "./services/assignmentService";
 import { getDepartments } from "./services/departmentService";
-import { validateImage } from "./services/imageService";
+import {
+  ATTACHMENT_ACCEPT,
+  isImageAttachment,
+  validateAttachment,
+} from "./services/attachmentService";
 import { getCurrentProfile } from "./services/profileService";
 import {
   archiveTicket,
@@ -119,7 +123,8 @@ function App() {
   const [formError, setFormError] = useState("");
   const [submittedCode, setSubmittedCode] = useState("");
   const [submittedTargetDepartment, setSubmittedTargetDepartment] = useState("");
-  const [requestImagePreview, setRequestImagePreview] = useState("");
+  const [requestAttachmentPreview, setRequestAttachmentPreview] = useState("");
+  const [requestAttachmentName, setRequestAttachmentName] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [isLoadingAssignableMembers, setIsLoadingAssignableMembers] =
@@ -400,17 +405,19 @@ function App() {
 
   function closeRequestForm() {
     setIsFormOpen(false);
-    setRequestImagePreview((current) => {
+    setRequestAttachmentName("");
+    setRequestAttachmentPreview((current) => {
       if (current) URL.revokeObjectURL(current);
       return "";
     });
   }
 
-  function handleRequestImageChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleRequestAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     setFormError("");
 
-    setRequestImagePreview((current) => {
+    setRequestAttachmentName("");
+    setRequestAttachmentPreview((current) => {
       if (current) URL.revokeObjectURL(current);
       return "";
     });
@@ -418,8 +425,11 @@ function App() {
     if (!file) return;
 
     try {
-      validateImage(file);
-      setRequestImagePreview(URL.createObjectURL(file));
+      validateAttachment(file);
+      setRequestAttachmentName(file.name);
+      if (isImageAttachment(file.type, file.name)) {
+        setRequestAttachmentPreview(URL.createObjectURL(file));
+      }
     } catch (error) {
       event.currentTarget.value = "";
       setFormError(getErrorMessage(error));
@@ -447,20 +457,23 @@ function App() {
       subject: String(form.get("subject") ?? ""),
       detail: String(form.get("detail") ?? ""),
     };
-    const imageEntry = form.get("image");
-    const image =
-      imageEntry instanceof File && imageEntry.size > 0 ? imageEntry : undefined;
+    const attachmentEntry = form.get("attachment");
+    const attachment =
+      attachmentEntry instanceof File && attachmentEntry.size > 0
+        ? attachmentEntry
+        : undefined;
 
     setFormError("");
     setIsSubmitting(true);
 
     try {
-      const newTicket = await createTicket(input, image);
+      const newTicket = await createTicket(input, attachment);
       setTickets((current) => [newTicket, ...current]);
       setSubmittedCode(newTicket.code);
       setSubmittedTargetDepartment(newTicket.targetDepartment);
       formElement.reset();
-      setRequestImagePreview((current) => {
+      setRequestAttachmentName("");
+      setRequestAttachmentPreview((current) => {
         if (current) URL.revokeObjectURL(current);
         return "";
       });
@@ -575,7 +588,7 @@ function App() {
     if (!ticket?.archivedAt) return;
 
     const confirmed = window.confirm(
-      `ลบ ${ticket.code} ถาวรหรือไม่?\n\nคำขอ แชต และรูปภาพทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้`,
+      `ลบ ${ticket.code} ถาวรหรือไม่?\n\nคำขอ แชต และไฟล์แนบทั้งหมดจะถูกลบและไม่สามารถกู้คืนได้`,
     );
     if (!confirmed) return;
 
@@ -1030,10 +1043,12 @@ function App() {
                     </div>
                     <h3>{ticket.subject}</h3>
                     <p>{ticket.detail}</p>
-                    {ticket.imagePath && (
-                      <AttachmentImage
-                        path={ticket.imagePath}
-                        alt={`รูปประกอบคำขอ ${ticket.code}`}
+                    {ticket.attachmentPath && (
+                      <AttachmentFile
+                        path={ticket.attachmentPath}
+                        name={ticket.attachmentName}
+                        mimeType={ticket.attachmentMimeType}
+                        size={ticket.attachmentSize}
                         className="ticket-attachment"
                       />
                     )}
@@ -1413,17 +1428,32 @@ function App() {
                       />
                     </label>
                     <div className="full-width request-image-field">
-                      <span>รูปประกอบ (ถ้ามี)</span>
+                      <span>ไฟล์แนบ (ถ้ามี)</span>
                       <input
-                        name="image"
+                        name="attachment"
                         type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        onChange={handleRequestImageChange}
+                        accept={ATTACHMENT_ACCEPT}
+                        onChange={handleRequestAttachmentChange}
                       />
-                      <small>รองรับ JPG, PNG, WEBP หรือ GIF ขนาดไม่เกิน 5 MB</small>
-                      {requestImagePreview && (
-                        <span className="request-image-preview">
-                          <img src={requestImagePreview} alt="ตัวอย่างรูปที่จะส่ง" />
+                      <small>
+                        รองรับรูป, PDF, DOCX, XLSX, PPTX, TXT, CSV, MD และ JSON
+                        ขนาดไม่เกิน 10 MB · ไม่รองรับไฟล์มาโครและไฟล์โปรแกรม
+                      </small>
+                      {requestAttachmentName && (
+                        <span
+                          className={`request-image-preview ${
+                            requestAttachmentPreview ? "" : "document"
+                          }`}
+                        >
+                          {requestAttachmentPreview ? (
+                            <img
+                              src={requestAttachmentPreview}
+                              alt="ตัวอย่างไฟล์ที่จะส่ง"
+                            />
+                          ) : (
+                            <i className="selected-file-icon">FILE</i>
+                          )}
+                          <b>{requestAttachmentName}</b>
                           <button
                             type="button"
                             onClick={(event) => {
@@ -1431,13 +1461,14 @@ function App() {
                                 .closest(".request-image-field")
                                 ?.querySelector<HTMLInputElement>('input[type="file"]');
                               if (input) input.value = "";
-                              setRequestImagePreview((current) => {
+                              setRequestAttachmentName("");
+                              setRequestAttachmentPreview((current) => {
                                 if (current) URL.revokeObjectURL(current);
                                 return "";
                               });
                             }}
                           >
-                            ลบรูป
+                            ลบไฟล์
                           </button>
                         </span>
                       )}

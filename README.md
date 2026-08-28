@@ -26,10 +26,13 @@
 - ห้องแชตแยกตามคำขอ พร้อมรับข้อความใหม่แบบ Realtime
 - ศูนย์แจ้งเตือนในเว็บแบบ Realtime พร้อมจำนวนที่ยังไม่อ่านและปุ่มอ่านทั้งหมด
 - Admin ได้รับแจ้งเตือนเฉพาะคำขอและข้อความที่ส่งมายังแผนกของตนเอง ส่วน User ได้รับแจ้งเตือนเมื่อสถานะเปลี่ยนหรือแผนกปลายทางตอบแชต
-- แนบรูปภาพได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 5 MB ต่อรูป)
+- แนบรูปหรือเอกสารได้ทั้งตอนส่งคำขอและในห้องแชต (สูงสุด 10 MB ต่อไฟล์)
+- รองรับ JPG, PNG, WEBP, GIF, PDF, DOCX, XLSX, PPTX, TXT, CSV, MD และ JSON
+- ตรวจไฟล์ฝั่ง Server ก่อนจัดเก็บ โดยตรวจนามสกุล, MIME, File Signature, โครงสร้าง PDF/Office, ZIP bomb, CSV formula และไฟล์ซ้อนนามสกุล
+- ไม่อนุญาตไฟล์โปรแกรม, Script, Archive, Office รุ่นเก่า และ Office ที่มี Macro/ActiveX/Embedded object
 - ลบได้เฉพาะคำขอที่เสร็จสิ้น โดยใช้ Soft Delete และเก็บไว้ในคลังสำรอง
 - เปิดดูแชต กู้คืน หรือลบคำขอจากคลังสำรองถาวรได้
-- ระบบเก็บ Backup ไว้ 7 วัน แล้วลบคำขอ แชต และรูปภาพถาวรอัตโนมัติ
+- ระบบเก็บ Backup ไว้ 7 วัน แล้วลบคำขอ แชต และไฟล์แนบถาวรอัตโนมัติ
 - หน้าสถิติรายวัน 7 วัน, รายเดือน 12 เดือน และรายปี 5 ปี พร้อมกราฟแนวโน้ม
 - Export รายงานสถิติเป็นไฟล์ CSV ภาษาไทย พร้อมสรุป รายละเอียดแต่ละช่วง และรายการคำขอ
 - หน้า Audit Trail สำหรับ Admin แสดงประวัติผู้ดำเนินการ เวลา และรายละเอียด พร้อมค้นหา กรอง และ Export CSV
@@ -50,11 +53,11 @@
 
 ไฟล์ SQL จะสร้างตาราง `departments`, `profiles`, `it_requests`, ตารางแชต `it_request_messages`, แผนกผู้ส่ง, แผนกปลายทาง, role, permissions, requester ownership, เบอร์โทร, คลังสำรอง, Storage bucket ส่วนตัว, trigger, Realtime และ RLS policies
 
-หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้ง สคริปต์จะย้ายรายชื่อแผนกเดิมเข้าสู่ตาราง `departments`, เพิ่มคอลัมน์ `phone`, สร้าง Profile ให้บัญชี Auth เดิมเป็น role `user` และเชื่อมคำขอเดิมกับบัญชีที่อีเมลตรงกัน โดยไม่ลบคำขอ ข้อความ หรือรูปภาพเดิม
+หากเคย Run `schema.sql` รุ่นก่อนแล้ว ให้ Run รุ่นล่าสุดทั้งไฟล์อีกครั้ง สคริปต์จะย้ายรายชื่อแผนกเดิมเข้าสู่ตาราง `departments`, เพิ่มคอลัมน์ `phone`, สร้าง Profile ให้บัญชี Auth เดิมเป็น role `user` และเชื่อมคำขอเดิมกับบัญชีที่อีเมลตรงกัน โดยไม่ลบคำขอ ข้อความ หรือไฟล์แนบเดิม
 
 เบอร์โทรของบัญชีเดิมจะเป็นค่าว่างได้ แต่การสร้าง User ใหม่จากหน้า Admin จะบังคับกรอกเบอร์ไทย เช่น `0812345678` หรือ `+66812345678` และบันทึกเป็นรูปแบบ `+66...`
 
-รูปภาพรองรับไฟล์ JPG, PNG, WEBP และ GIF ขนาดไม่เกิน 5 MB ไฟล์จะอยู่ใน bucket แบบ private และหน้าเว็บจะสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่ Login แล้ว
+ไฟล์แนบมีขนาดไม่เกิน 10 MB และอยู่ใน bucket แบบ private หน้าเว็บสร้างลิงก์ชั่วคราวให้เฉพาะผู้ที่มีสิทธิ์เข้าถึงคำขอ เอกสารจะถูกส่งเป็นไฟล์ดาวน์โหลดแทนการฝังแสดงในหน้าเว็บ
 
 ### 1.1 เปิดใช้ศูนย์แจ้งเตือนในเว็บ
 
@@ -97,7 +100,7 @@ Admin เดิมจะได้รับสิทธิ์เดิมคร�
 
 Migration จะเพิ่ม `target_department` และกำหนดคำขอเก่าทั้งหมดให้ส่งถึง `ฝ่าย IT` โดยอัตโนมัติ เนื่องจากคำขอเหล่านั้นมาจากระบบ IT เดิม ส่วนคำขอใหม่จะใช้เลขรูปแบบ `REQ-...` และผู้ส่งเป็นผู้เลือกแผนกปลายทาง
 
-RLS, ห้องแชต, รูปภาพ, คลังสำรอง, สถิติ, Audit Trail และการแจ้งเตือนจะตรวจแผนกปลายทางเสมอ Admin จึงไม่สามารถเปิดคำขอของแผนกอื่นด้วยการเรียก API โดยตรง
+RLS, ห้องแชต, ไฟล์แนบ, คลังสำรอง, สถิติ, Audit Trail และการแจ้งเตือนจะตรวจแผนกปลายทางเสมอ Admin จึงไม่สามารถเปิดคำขอของแผนกอื่นด้วยการเรียก API โดยตรง
 
 ### 1.5 เปิดใช้การมอบหมายผู้รับผิดชอบในแผนก
 
@@ -107,9 +110,37 @@ RLS, ห้องแชต, รูปภาพ, คลังสำรอง, ส
 2. `supabase/setup_activity_logs.sql` อีกครั้ง เพื่อบันทึกประวัติการมอบหมาย
 3. `supabase/setup_notifications.sql` อีกครั้ง เพื่อแจ้งผู้ได้รับมอบหมายและปรับการแจ้งเตือนแชต
 
-Migration จะเพิ่มผู้รับผิดชอบ เวลาและผู้มอบหมาย รวมถึง RLS สำหรับคำขอ แชต และรูปภาพ Admin ต้องมีสิทธิ์ `requests.update` และเลือกได้เฉพาะ Profile ที่อยู่ในแผนกปลายทางของคำขอเท่านั้น การตรวจสอบนี้อยู่ใน Database Function จึงข้ามด้วยการแก้หน้าเว็บหรือเรียก API โดยตรงไม่ได้
+Migration จะเพิ่มผู้รับผิดชอบ เวลาและผู้มอบหมาย รวมถึง RLS สำหรับคำขอ แชต และไฟล์แนบ Admin ต้องมีสิทธิ์ `requests.update` และเลือกได้เฉพาะ Profile ที่อยู่ในแผนกปลายทางของคำขอเท่านั้น การตรวจสอบนี้อยู่ใน Database Function จึงข้ามด้วยการแก้หน้าเว็บหรือเรียก API โดยตรงไม่ได้
 
 การอัปเดตส่วนนี้ไม่ต้อง Deploy Edge Function เพิ่ม เพราะคำสั่งมอบหมายทำงานผ่าน PostgreSQL RPC ที่สร้างโดยไฟล์ SQL
+
+### 1.6 เปิดใช้ไฟล์แนบเอกสารและระบบตรวจความปลอดภัย
+
+หากอัปเกรดจากเวอร์ชันก่อน ให้เปิด `supabase/setup_secure_attachments.sql` และ Run ทั้งไฟล์ใน SQL Editor หลังจากติดตั้งระบบหลายแผนกและการมอบหมายแล้ว Migration จะ:
+
+- เพิ่มชื่อ, MIME type และขนาดของไฟล์แนบในคำขอและแชต
+- เพิ่มขนาด Storage สูงสุดเป็น 10 MB
+- ปิดการอัปโหลดและลบไฟล์ตรงจาก Browser
+- บังคับให้ไฟล์ใหม่ผ่าน Edge Function `upload-attachment` ก่อนจัดเก็บ
+
+ประเภทไฟล์ที่รองรับ:
+
+| กลุ่ม | นามสกุล |
+| --- | --- |
+| รูปภาพ | JPG, JPEG, PNG, WEBP, GIF |
+| เอกสาร | PDF, DOCX, XLSX, PPTX |
+| ข้อความและข้อมูล | TXT, CSV, MD, JSON |
+
+ระบบไม่รับ `.doc`, `.xls`, `.ppt` รุ่นเก่า เพราะตรวจ Macro ภายในได้ไม่ปลอดภัยเท่า Open XML และไม่รับ `.docm`, `.xlsm`, `.pptm`, `.zip`, `.rar`, `.7z`, `.exe`, `.bat`, `.cmd`, `.ps1`, `.js`, `.html` หรือ `.svg`
+
+ตัวตรวจที่ติดมากับโปรเจกต์เป็นการตรวจโครงสร้างและเนื้อหาเสี่ยง ไม่ใช่ฐานลายเซ็นไวรัสแบบ ClamAV หากองค์กรต้องการ Antivirus เต็มรูปแบบ สามารถตั้ง Secret เพิ่มได้:
+
+```bash
+supabase secrets set MALWARE_SCAN_URL=https://YOUR_PRIVATE_SCANNER/scan
+supabase secrets set MALWARE_SCAN_TOKEN=YOUR_PRIVATE_SCANNER_TOKEN
+```
+
+Scanner ต้องรับไฟล์ Binary ผ่าน `POST` และตอบ JSON รูปแบบ `{"safe":true}` หรือ `{"safe":false,"threat":"ชื่อภัยคุกคาม"}` เมื่อกำหนด URL แล้ว ระบบจะหยุดอัปโหลดทันทีหาก Scanner ไม่ตอบหรือไม่คืน `safe: true` ไม่ควรส่งเอกสารภายในองค์กรไปยังบริการสแกนแบบสาธารณะโดยไม่ตรวจนโยบายข้อมูลก่อน
 
 ### ถ้าเคยพบ error `it_requests_requester_email_check`
 
@@ -142,6 +173,7 @@ npx supabase link --project-ref qhdwztrzljhkjmacfrkn
 npx supabase functions deploy create-user
 npx supabase functions deploy update-user
 npx supabase functions deploy manage-admin-access
+npx supabase functions deploy upload-attachment
 ```
 
 สร้างรหัสลับแบบสุ่มด้วยคำสั่งนี้ แล้วคัดลอกค่าที่แสดงไว้:
@@ -167,6 +199,7 @@ Supabase จะมี `SUPABASE_URL`, `SUPABASE_ANON_KEY` และ `SUPABASE_SE
 npx supabase functions deploy create-user
 npx supabase functions deploy update-user
 npx supabase functions deploy manage-admin-access
+npx supabase functions deploy upload-attachment
 npx supabase functions deploy purge-backups --no-verify-jwt
 ```
 
@@ -228,7 +261,7 @@ src/
 ├─ components/ArchivePage.tsx # คลังสำรองและการกู้คืนคำขอ
 ├─ components/AdminAccessDialog.tsx # Super Admin กำหนดบทบาทและสิทธิ์
 ├─ components/ActivityLogPage.tsx # ประวัติการดำเนินการ ค้นหา กรอง และ Export
-├─ components/AttachmentImage.tsx # โหลดรูปส่วนตัวด้วย signed URL
+├─ components/AttachmentFile.tsx # แสดงรูปหรือดาวน์โหลดเอกสารด้วย signed URL
 ├─ components/ChatDrawer.tsx # ห้องแชตของแต่ละคำขอ
 ├─ components/EditUserDialog.tsx # Modal แก้ไข User ผ่าน React Portal
 ├─ components/LoginPage.tsx  # หน้า Login ไม่มี Register
@@ -239,7 +272,7 @@ src/
 ├─ services/departmentService.ts # โหลดและเพิ่มแผนก
 ├─ services/activityLogService.ts # โหลดและ subscribe ประวัติ Admin
 ├─ services/assignmentService.ts # รายชื่อสมาชิกในแผนกและคำสั่งมอบหมาย
-├─ services/imageService.ts  # ตรวจสอบ/อัปโหลด/เปิดรูปจาก Storage
+├─ services/attachmentService.ts # เลือก อัปโหลด ดาวน์โหลด และลบไฟล์แนบ
 ├─ services/messageService.ts # โหลด/ส่ง/subscribe ข้อความ
 ├─ services/notificationService.ts # โหลด อ่าน และ subscribe แจ้งเตือน
 ├─ services/profileService.ts # Profile, role และเรียก Edge Function
@@ -250,6 +283,7 @@ src/
 ├─ types/department.ts       # TypeScript type ของแผนก
 ├─ types/activityLog.ts      # TypeScript type ของประวัติการดำเนินการ
 ├─ types/assignment.ts       # TypeScript type ของผู้รับมอบหมาย
+├─ types/attachment.ts       # TypeScript type ของไฟล์ที่ผ่านการตรวจ
 ├─ types/profile.ts          # TypeScript type ของ Admin/User
 ├─ types/ticket.ts           # TypeScript types
 ├─ App.tsx                   # Session guard, dashboard และ state หลัก
@@ -259,11 +293,13 @@ supabase/
 ├─ functions/create-user/index.ts # สร้าง Auth User ฝั่ง Server
 ├─ functions/update-user/index.ts # แก้ Profile/Auth User ฝั่ง Server
 ├─ functions/manage-admin-access/index.ts # แต่งตั้ง Admin และบันทึก permissions
+├─ functions/upload-attachment/index.ts # ตรวจไฟล์อันตรายก่อนเก็บใน Private Storage
 ├─ functions/purge-backups/index.ts # Admin ลบถาวรและ Cron ลบ Backup ครบ 7 วัน
 ├─ promote_super_admin.sql   # ตั้งค่า Super Admin คนแรก
 ├─ setup_super_admin_permissions.sql # Migration role, permissions และ RLS
 ├─ setup_multi_department_requests.sql # Migration แผนกผู้ส่ง/ปลายทางและ RLS
 ├─ setup_request_assignment.sql # Migration มอบหมายงานให้สมาชิกแผนกเดียวกัน
+├─ setup_secure_attachments.sql # Migration เอกสารและบังคับอัปโหลดผ่าน Scanner
 ├─ setup_backup_cleanup.sql  # Vault + Cron เรียกลบ Backup ทุกชั่วโมง
 ├─ setup_activity_logs.sql   # Audit Trail Trigger Realtime และ RLS
 ├─ setup_notifications.sql   # ตาราง Trigger Realtime และ RLS แจ้งเตือน
@@ -288,4 +324,4 @@ supabase/
 
 การซ่อนปุ่มใน React เป็นเพียง UI การบังคับสิทธิ์จริงอยู่ที่ Supabase RLS, Database Trigger และ Edge Functions โดย `manage-admin-access` ยอมรับเฉพาะ Super Admin, `create-user`/`update-user` ตรวจ permission ของผู้เรียก และ `purge-backups` ตรวจ `archive.delete` หรือ Cleanup Secret ทุกครั้ง
 
-เมื่อคำขอถูกลบถาวรแล้ว ข้อมูลคำขอ แชต รูปภาพ และข้อมูลของรายการนั้นในหน้าสถิติจะไม่สามารถกู้คืนได้
+เมื่อคำขอถูกลบถาวรแล้ว ข้อมูลคำขอ แชต ไฟล์แนบ และข้อมูลของรายการนั้นในหน้าสถิติจะไม่สามารถกู้คืนได้
