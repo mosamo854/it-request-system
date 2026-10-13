@@ -172,6 +172,7 @@ npx supabase login
 npx supabase link --project-ref qhdwztrzljhkjmacfrkn
 npx supabase functions deploy create-user
 npx supabase functions deploy update-user
+npx supabase functions deploy change-password --no-verify-jwt
 npx supabase functions deploy manage-admin-access
 npx supabase functions deploy upload-attachment
 ```
@@ -292,6 +293,7 @@ src/
 supabase/
 ├─ functions/create-user/index.ts # สร้าง Auth User ฝั่ง Server
 ├─ functions/update-user/index.ts # แก้ Profile/Auth User ฝั่ง Server
+├─ functions/change-password/index.ts # เปลี่ยนรหัสผ่านโดยตรวจสอบ Role ฝั่ง Server
 ├─ functions/manage-admin-access/index.ts # แต่งตั้ง Admin และบันทึก permissions
 ├─ functions/upload-attachment/index.ts # ตรวจไฟล์อันตรายก่อนเก็บใน Private Storage
 ├─ functions/purge-backups/index.ts # Admin ลบถาวรและ Cron ลบ Backup ครบ 7 วัน

@@ -244,8 +244,10 @@ with check (
     where profile.id = auth.uid()
       and profile.full_name = requester_name
       and profile.email = requester_email
-      and profile.department = department
-      and profile.role = 'user'
+      and (
+        (profile.role = 'user' and profile.department = department)
+        or profile.role = 'super_admin'
+      )
   )
   and (
     image_path is null

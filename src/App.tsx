@@ -396,7 +396,7 @@ function App() {
   }
 
   function openRequestForm() {
-    if (profile?.role !== "user") return;
+    if (profile?.role !== "user" && profile?.role !== "super_admin") return;
     setSubmittedCode("");
     setSubmittedTargetDepartment("");
     setFormError("");
@@ -441,7 +441,11 @@ function App() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
 
-    if (!profile || profile.role !== "user" || !profile.department) {
+    if (
+      !profile ||
+      (profile.role !== "user" && profile.role !== "super_admin") ||
+      (profile.role === "user" && !profile.department)
+    ) {
       setFormError("บัญชีนี้ยังไม่มีข้อมูลแผนก หรือไม่มีสิทธิ์ส่งคำขอ");
       return;
     }
@@ -450,7 +454,7 @@ function App() {
       requesterUserId: profile.id,
       requesterName: profile.fullName,
       requesterEmail: profile.email,
-      requesterDepartment: profile.department,
+      requesterDepartment: profile.department ?? "ฝ่ายบริหาร",
       targetDepartment: String(form.get("targetDepartment") ?? "").trim(),
       category: String(form.get("category") ?? ""),
       priority: String(form.get("priority") ?? "normal") as TicketPriority,
@@ -852,7 +856,11 @@ function App() {
                   : "คำขอของฉัน"}
             </h1>
           </div>
-          {canCreateUsers ? (
+          {profile.role === "super_admin" && canViewRequests ? (
+            <button className="primary-button" onClick={openRequestForm}>
+              <span>＋</span> เพิ่มคำขอ
+            </button>
+          ) : canCreateUsers ? (
             <button className="primary-button" onClick={() => showView("users")}>
               <span>＋</span> เพิ่มผู้ใช้
             </button>
@@ -869,9 +877,17 @@ function App() {
               <i /> ระบบคำขอกลางขององค์กร
             </span>
             <h2>
-              {isStaff ? "รับคำขอจากแผนกอื่น" : "ต้องการความช่วยเหลือ"}
+              {profile.role === "super_admin"
+                ? "จัดการคำขอได้จากส่วนกลาง"
+                : isStaff
+                  ? "รับคำขอจากแผนกอื่น"
+                  : "ต้องการความช่วยเหลือ"}
               <br />
-              {isStaff ? "จัดการได้ในที่เดียว" : "เลือกแผนกแล้วส่งคำขอได้เลย"}
+              {profile.role === "super_admin"
+                ? "รวมถึงสร้างคำขอใหม่ได้ด้วย"
+                : isStaff
+                  ? "จัดการได้ในที่เดียว"
+                  : "เลือกแผนกแล้วส่งคำขอได้เลย"}
             </h2>
             <p>
               {isStaff

@@ -116,3 +116,11 @@ export async function manageAdminAccess(input: ManageAdminAccessInput) {
   }
   if (data?.error) throw new Error(String(data.error));
 }
+
+export async function changeManagedPassword(userId: string, password: string) {
+  const { data, error } = await supabase.functions.invoke("change-password", {
+    body: { userId, password },
+  });
+  if (error) throw new Error(await getFunctionErrorMessage(error, "change-password"));
+  if (data?.error) throw new Error(String(data.error));
+}

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createDepartment } from "../services/departmentService";
 import {
+  changeManagedPassword,
   createManagedUser,
   getProfiles,
   manageAdminAccess,
@@ -16,6 +17,7 @@ import type {
 import { hasPermission } from "../types/profile";
 import AdminAccessDialog from "./AdminAccessDialog";
 import EditUserDialog from "./EditUserDialog";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 
 interface UserManagementPageProps {
   currentProfile: UserProfile;
@@ -70,6 +72,9 @@ export default function UserManagementPage({
   const [accessUser, setAccessUser] = useState<UserProfile | null>(null);
   const [isSavingAccess, setIsSavingAccess] = useState(false);
   const [accessError, setAccessError] = useState("");
+  const [passwordUser, setPasswordUser] = useState<UserProfile | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   const isSuperAdmin = currentProfile.role === "super_admin";
   const canCreateUsers = hasPermission(currentProfile, "users.create");
@@ -190,6 +195,36 @@ export default function UserManagementPage({
       setEditError(getErrorMessage(error));
     } finally {
       setIsUpdatingUser(false);
+    }
+  }
+
+  function openPasswordDialog(user: UserProfile) {
+    const allowed = user.id === currentProfile.id ||
+      isSuperAdmin && user.role !== "super_admin" ||
+      user.role === "user" && canUpdateUsers;
+    if (!allowed) return;
+    setPasswordError("");
+    setPasswordUser(user);
+  }
+
+  function closePasswordDialog() {
+    if (isChangingPassword) return;
+    setPasswordUser(null);
+    setPasswordError("");
+  }
+
+  async function handleChangePassword(userId: string, password: string) {
+    setPasswordError("");
+    setIsChangingPassword(true);
+    try {
+      await changeManagedPassword(userId, password);
+      const changedUser = users.find((user) => user.id === userId);
+      setPasswordUser(null);
+      setEditSuccess(`เปลี่ยนรหัสผ่าน${changedUser ? `ของ ${changedUser.fullName}` : ""} สำเร็จแล้ว`);
+    } catch (error) {
+      setPasswordError(getErrorMessage(error));
+    } finally {
+      setIsChangingPassword(false);
     }
   }
 
@@ -447,6 +482,13 @@ export default function UserManagementPage({
                 </time>
 
                 <div className="um-row-action">
+                  {(user.id === currentProfile.id ||
+                    (isSuperAdmin && user.role !== "super_admin") ||
+                    (user.role === "user" && canUpdateUsers)) && (
+                    <button type="button" onClick={() => openPasswordDialog(user)}>
+                      🔒 เปลี่ยนรหัสผ่าน
+                    </button>
+                  )}
                   {user.role === "user" && canUpdateUsers && (
                     <button type="button" onClick={() => openEditUser(user)}>
                       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -502,6 +544,17 @@ export default function UserManagementPage({
           errorMessage={editError}
           onClose={closeEditUser}
           onSubmit={handleUpdateUser}
+        />
+      )}
+
+      {passwordUser && (
+        <ChangePasswordDialog
+          key={passwordUser.id}
+          user={passwordUser}
+          isSaving={isChangingPassword}
+          errorMessage={passwordError}
+          onClose={closePasswordDialog}
+          onSubmit={handleChangePassword}
         />
       )}
 
